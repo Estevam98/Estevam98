@@ -17,6 +17,23 @@
 
 ---
 
+## 🦇 Commit Cave — minha jornada em pixel art
+
+Uma caverna viva alimentada pela minha atividade pública no GitHub: cada commit atribuído ao meu perfil vira um morcego, que envelhece com o tempo. A fogueira e o explorador mudam de humor; após **3 dias sem novos commits**, o personagem começa a sentir fome.
+
+<p align="center">
+  <a href="https://estevam98.github.io/Estevam98/">
+    <img src="https://img.shields.io/badge/Entrar_na_Commit_Cave-8B5CF6?style=for-the-badge&logo=github&logoColor=white" alt="Abrir a Commit Cave">
+  </a>
+  <a href="https://github.com/Estevam98/Estevam98/actions/workflows/commit-cave.yml">
+    <img src="https://img.shields.io/badge/Atualiza%C3%A7%C3%A3o-GitHub_Actions-2088FF?style=for-the-badge&logo=githubactions&logoColor=white" alt="Workflow da Commit Cave">
+  </a>
+</p>
+
+> A simulação é ambiente e não possui controles: passe o cursor sobre os morcegos para ver a mensagem e a data do commit. Os dados são coletados periodicamente pelo GitHub Actions a partir de repositórios públicos não arquivados e não-forks.
+
+---
+
 ## 👋 Sobre mim
 
 Sou profissional de tecnologia em transição e evolução contínua na área de **Quality Assurance (QA)**, com formação em Análise e Desenvolvimento de Sistemas e experiência anterior em análise de fraude e suporte de TI.
