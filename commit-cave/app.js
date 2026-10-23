@@ -87,3 +87,34 @@ async function main() {
   }
 }
 main();
+
+/* Parallax suave para dar sensação de profundidade, sem controles obrigatórios. */
+(() => {
+  const scene = document.getElementById('caveFrame');
+  if (!scene || window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+  let raf = 0;
+  scene.addEventListener('pointermove', (event) => {
+    const rect = scene.getBoundingClientRect();
+    const x = (event.clientX - rect.left) / rect.width - .5;
+    const y = (event.clientY - rect.top) / rect.height - .5;
+    if (raf) cancelAnimationFrame(raf);
+    raf = requestAnimationFrame(() => {
+      const set = (selector, dx, dy) => {
+        const el = scene.querySelector(selector);
+        if (el) el.style.translate = (x * dx) + 'px ' + (y * dy) + 'px';
+      };
+      set('.depth-back', -8, -5);
+      set('.depth-mid', -15, -8);
+      set('.stalactites', -10, -5);
+      set('.bats', 18, 10);
+      set('.caveman', -5, 0);
+      set('.fire-area', 4, 0);
+    });
+  });
+  scene.addEventListener('pointerleave', () => {
+    ['.depth-back','.depth-mid','.stalactites','.bats','.caveman','.fire-area'].forEach(selector => {
+      const el = scene.querySelector(selector);
+      if (el) el.style.translate = '';
+    });
+  });
+})();
