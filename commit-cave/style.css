@@ -135,3 +135,24 @@ footer{border-top:1px solid #373149;padding-top:18px;display:flex;justify-conten
  .stalactites{height:90px}
  .thought{left:-38px;bottom:130px}
 }
+
+
+/* Correções: o avatar não é usado como textura no rosto do personagem.
+   O explorador é um sprite próprio e fica no chão, à esquerda da fogueira. */
+.hero-face{display:none!important}
+.head{overflow:visible;border-radius:7px 7px 9px 9px;background:linear-gradient(90deg,#a9674d,#d99a68 55%,#bb7956);box-shadow:4px 3px 0 #251b2c,-3px 4px 0 #251b2c}
+.head .eye{z-index:3;background:#20151b}
+.head .nose{z-index:3;box-shadow:2px 2px 0 #99583f}
+.head .beard{z-index:3}
+.hair{z-index:4;top:8px;left:16px;width:39px;height:14px;clip-path:polygon(0 30%,18% 0,35% 20%,48% 0,67% 18%,88% 0,100% 55%,80% 85%,12% 85%);background:#29202b}
+.cave-frame{isolation:isolate;transform:translateZ(0)}
+.cave-sky,.cave-glow,.stalactites,.depth-layer,.bats,.fire-area,.caveman,.ground{transition:transform .22s ease-out}
+.depth-layer{position:absolute;inset:0;pointer-events:none}
+.depth-back{z-index:2;opacity:.55;background:linear-gradient(135deg,transparent 20%,#51405a33 50%,transparent 70%),radial-gradient(ellipse at 12% 60%,#100e20 0 10%,transparent 38%),radial-gradient(ellipse at 90% 58%,#100e20 0 13%,transparent 40%)}
+.depth-mid{z-index:2;opacity:.7;background:linear-gradient(110deg,#100e1c 0 4%,transparent 24% 74%,#100e1c 100%);clip-path:polygon(0 0,8% 0,21% 25%,13% 48%,19% 73%,8% 100%,0 100%,0 0,100% 0,100% 100%,89% 100%,82% 75%,88% 53%,78% 29%,91% 0)}
+.game-hint{position:absolute;z-index:10;left:18px;bottom:42px;font-size:8px;letter-spacing:.13em;color:#c6b7d7;text-shadow:2px 2px #090711;opacity:.72}
+.bats{pointer-events:none}
+.bat{pointer-events:auto;cursor:pointer}
+.bat:hover{z-index:8;filter:drop-shadow(0 0 9px #ffe19a)!important}
+.caveman{left:calc(50% - 175px);bottom:72px}
+@media(max-width:680px){.caveman{left:calc(50% - 145px);bottom:62px}.game-hint{font-size:7px;left:10px}}
