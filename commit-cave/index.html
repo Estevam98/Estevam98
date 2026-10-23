@@ -1,0 +1,68 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#100f1b">
+  <meta name="description" content="Commit Cave — uma caverna viva alimentada pela jornada de commits de Lucas Estevam.">
+  <title>Commit Cave — Lucas Estevam</title>
+  <link rel="stylesheet" href="./style.css">
+</head>
+<body>
+  <main class="shell">
+    <header class="topbar">
+      <a class="brand" href="https://github.com/Estevam98" aria-label="Voltar ao GitHub de Lucas Estevam">
+        <span class="brand-icon">✦</span><span>COMMIT CAVE</span>
+      </a>
+      <span class="status"><i></i> ECOSSISTEMA VIVO</span>
+    </header>
+
+    <section class="intro">
+      <p class="eyebrow">UM EXPERIMENTO DE CÓDIGO, TEMPO E CONSTÂNCIA</p>
+      <h1>Minha jornada,<br><span>esculpida em commits.</span></h1>
+      <p class="lede">Cada commit deixa um morcego na caverna. O tempo muda suas asas, e a chama acompanha o ritmo da jornada.</p>
+    </section>
+
+    <section class="cave-frame" aria-label="Simulação animada da caverna">
+      <div class="cave-sky"></div>
+      <div class="cave-glow"></div>
+      <div class="stalactites" aria-hidden="true"></div>
+      <div class="cave-label"><span>SETOR 01</span><span id="caveMood">A chama está tranquila</span></div>
+      <div id="bats" class="bats" aria-label="Morcegos que representam commits"></div>
+      <div class="fire-area" aria-hidden="true">
+        <div class="smoke smoke-one"></div><div class="smoke smoke-two"></div>
+        <div class="flame flame-back"></div><div class="flame flame-front"></div>
+        <div class="embers"><b></b><b></b><b></b></div>
+        <div class="logs"><i></i><i></i></div>
+        <div class="stones"><i></i><i></i><i></i><i></i></div>
+      </div>
+      <div class="caveman" id="caveman" aria-label="Personagem de Lucas junto à fogueira">
+        <div class="thought" id="thought">Mais um dia, mais uma linha de código.</div>
+        <div class="hair"></div><div class="head"><i class="eye"></i><i class="eye second"></i><i class="nose"></i><i class="beard"></i></div>
+        <div class="body"><i class="arm"></i><i class="belt"></i></div>
+        <div class="legs"><i></i><i></i></div>
+      </div>
+      <div class="ground"></div>
+      <div class="scene-footer"><span>☼ FOGO ACESO</span><span id="sceneLastCommit">Rastreando pegadas...</span></div>
+    </section>
+
+    <section class="stats" aria-label="Estatísticas da caverna">
+      <article class="stat-card"><span class="stat-icon">🦇</span><div><p>BATAS NA CAVERNA</p><strong id="totalCommits">—</strong><small>commits encontrados</small></div></article>
+      <article class="stat-card"><span class="stat-icon">⌛</span><div><p>ÚLTIMA PEGADA</p><strong id="lastCommit">—</strong><small id="lastCommitDate">buscando atividade</small></div></article>
+      <article class="stat-card"><span class="stat-icon">🔥</span><div><p>FOME DO EXPLORADOR</p><strong id="hungerLabel">—</strong><small id="hungerDetail">a chama acompanha a rotina</small></div></article>
+    </section>
+
+    <section class="legend">
+      <div><span class="legend-bat young">◆</span><span><b>Morcego jovem</b><small>commit recente</small></span></div>
+      <div><span class="legend-bat grown">◆</span><span><b>Morcego adulto</b><small>commit com alguns dias</small></span></div>
+      <div><span class="legend-bat old">◆</span><span><b>Morcego antigo</b><small>história acumulada</small></span></div>
+    </section>
+
+    <footer>
+      <p id="updateStatus">Os dados da caverna são atualizados automaticamente pelo GitHub Actions.</p>
+      <a href="https://github.com/Estevam98">Lucas Estevam ↗</a>
+    </footer>
+  </main>
+  <script src="./app.js" defer></script>
+</body>
+</html>
