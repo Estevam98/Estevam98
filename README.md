@@ -1,112 +1,121 @@
-# 👋 Olá, eu sou Lucas Estevam
+<!--
+  Perfil de Lucas Estevam — QA / Test Automation
+  Atualizado com foco em evidências práticas e evolução contínua.
+-->
 
-### QA Engineer | Test Automation | Quality Assurance
+<div align="center">
 
-Atuo na área de Quality Assurance com foco em testes de software, automação e melhoria contínua.
+# Lucas Estevam
+### QA | Testes de Software | Automação de Testes
 
-Meu objetivo é contribuir para a construção de produtos mais confiáveis através de uma combinação entre testes funcionais, exploratórios, automação e análise de riscos.
+**Transformando requisitos e riscos em cenários de teste claros, reproduzíveis e úteis para a qualidade do produto.**
 
----
+<a href="https://www.linkedin.com/in/lucasestevam-qa/"><img src="https://img.shields.io/badge/LinkedIn-Conectar-0A66C2?style=for-the-badge&logo=linkedin&logoColor=white" alt="LinkedIn"></a>
+<a href="https://github.com/Estevam98"><img src="https://img.shields.io/badge/GitHub-Portfólio-181717?style=for-the-badge&logo=github&logoColor=white" alt="GitHub"></a>
 
-## 🧪 Principais conhecimentos
-
-- Testes funcionais
-- Testes exploratórios
-- Testes de regressão
-- Testes E2E
-- Testes de API
-- Automação de testes
-- Cypress
-- Playwright
-- Postman
-- JavaScript
-- TypeScript
-- Git e GitHub
-- GitHub Actions
-- Scrum
-- Jira
-- Page Object Model
-- Assertions
-- Cenários positivos e negativos
+</div>
 
 ---
+
+## 👋 Sobre mim
+
+Sou profissional de tecnologia em transição e evolução contínua na área de **Quality Assurance (QA)**, com formação em Análise e Desenvolvimento de Sistemas e experiência anterior em análise de fraude e suporte de TI.
+
+Essa trajetória fortaleceu competências que levo para QA: investigação de inconsistências, análise de informações, atenção a regras e procedimentos, comunicação com diferentes públicos, priorização e resolução de problemas.
+
+Atualmente, direciono meus estudos e projetos para **testes funcionais, exploratórios, testes de API e automação E2E**. Meu objetivo é crescer como QA Automation por meio de prática, documentação clara, análise crítica e melhoria contínua.
+
+> **Meu princípio:** um teste útil não verifica apenas se algo funcionou; ele ajuda a entender o risco, evidencia o comportamento esperado e torna os problemas mais fáceis de investigar.
+
+## 🧭 Meu processo de qualidade
+
+```text
+Requisitos e regras de negócio
+            ↓
+Entendimento do risco
+            ↓
+Cenários positivos, negativos e exploratórios
+            ↓
+Execução manual e/ou automatizada
+            ↓
+Análise de evidências e registro de defeitos
+            ↓
+Feedback claro para apoiar a decisão
+            ↓
+Aprendizado e melhoria contínua
+```
 
 ## 🚀 Projetos em destaque
 
-### 🔌 Serverest API Testing
+### 1. 🔌 Serverest API Testing — Postman
 
-Projeto de testes de API utilizando Postman e JavaScript.
+**Testes de API REST com Postman e JavaScript**, utilizando a API Serverest como ambiente de estudo.
 
-Principais práticas:
+- Validação de status HTTP, mensagens e estrutura das respostas.
+- Autenticação com Bearer Token e uso de variáveis.
+- Encadeamento de requisições com IDs retornados pela API.
+- Validação dinâmica de preço e quantidade total do carrinho.
+- Testes de fluxos de cadastro, consulta, conclusão e cancelamento de carrinho.
+- Tratamento de dados temporários e limitações conhecidas do ambiente de estudo.
 
-- REST API
-- Assertions
-- Status codes
-- Pre-request Scripts
-- Post-response Scripts
-- Autenticação
-- Bearer Token
-- Dados dinâmicos
-- Variáveis
-- Encadeamento entre requisições
+**Tecnologias:** Postman · JavaScript · JSON · REST · HTTP
 
-👉 https://github.com/Estevam98/serverest-api-testing
+➡️ **[Ver projeto e instruções](https://github.com/Estevam98/serverest-api-testing)**
 
----
+### 2. 🧪 QA Automation Portfolio — Cypress
 
-### 🧪 QA Automation Portfolio
+Repositório de estudos e prática de automação E2E, com cenários de interação com interface, validações e organização dos testes.
 
-Projeto de automação de testes E2E utilizando Cypress e Playwright.
+➡️ **[Explorar projeto Cypress](https://github.com/Estevam98/meus-testes-cypress)**
 
-Principais práticas:
+### 3. 🚇 Metro Uptime — Testes com dados dinâmicos
 
-- E2E
-- Testes positivos e negativos
-- Page Object Model
-- TypeScript
-- JavaScript
-- GitHub Actions
-- Organização de suíte de testes
+Projeto de estudo com Cypress que pratica navegação, coleta de informações de status e validações condicionais em conteúdo que pode mudar.
 
-👉 https://github.com/Estevam98/meus-testes-cypress
+➡️ **[Explorar Metro Uptime](https://github.com/Estevam98/metro-uptime)**
+
+### 4. 📚 Primeiros Passos com Cypress
+
+Projeto de fundamentos que registra a evolução inicial na automação de testes E2E.
+
+➡️ **[Explorar projeto de fundamentos](https://github.com/Estevam98/primeiros-passos-cypress)**
 
 ---
 
-### 🚇 Metro Uptime
+## 🛠️ Competências
 
-Projeto de automação utilizando Cypress para validação dinâmica do status das linhas do metrô de São Paulo.
+| Área | Prática e conhecimentos |
+|---|---|
+| Qualidade | Testes funcionais, exploratórios e regressivos; cenários positivos e negativos; análise de comportamento |
+| API | Postman, HTTP, REST, JSON, assertions, autenticação e variáveis |
+| Automação E2E | Cypress e JavaScript em projetos de estudo |
+| Processo | Scrum, backlog, priorização, registro de defeitos e comunicação de resultados |
+| Ferramentas | Git, GitHub, Jira e Trello |
+| Em evolução | Aprofundamento em automação de API, execução via linha de comando e integração contínua |
 
-👉 https://github.com/Estevam98/metro-uptime
+**Transparência técnica:** os repositórios representam estudos e implementações práticas de portfólio. Estou evoluindo progressivamente a cobertura e a automação; tecnologias ou práticas ainda não demonstradas em um projeto não devem ser interpretadas como experiência profissional consolidada.
 
----
+## 📈 Roadmap do portfólio
 
-### 🧪 Primeiros Passos com Cypress
+- [x] Criar projetos de automação E2E com Cypress
+- [x] Criar coleção de testes de API no Postman
+- [x] Usar variáveis e dados retornados entre requisições
+- [x] Validar totais de carrinho dinamicamente
+- [ ] Ampliar cenários negativos e validações de contrato
+- [ ] Documentar a coleção Postman com instruções de importação
+- [ ] Executar a coleção por linha de comando com Newman
+- [ ] Integrar execução de testes a um workflow do GitHub Actions
+- [ ] Evoluir evidências, relatórios e análise de falhas
 
-Projeto desenvolvido para prática dos fundamentos de automação E2E utilizando Cypress e JavaScript.
+## 🤝 Vamos conversar?
 
-👉 https://github.com/Estevam98/primeiros-passos-cypress
+Estou aberto a oportunidades de QA e a conversas com profissionais de tecnologia que valorizem curiosidade, colaboração, pensamento crítico e evolução contínua.
 
----
+- **LinkedIn:** [linkedin.com/in/lucasestevam-qa](https://www.linkedin.com/in/lucasestevam-qa/)
+- **GitHub:** [github.com/Estevam98](https://github.com/Estevam98)
 
-## 🧠 Minha abordagem de qualidade
+<div align="center">
 
-```text
-Requisito
-   ↓
-Entendimento do comportamento
-   ↓
-Identificação de riscos
-   ↓
-Definição dos cenários
-   ↓
-Testes manuais / exploratórios
-   ↓
-Automação dos fluxos adequados
-   ↓
-Execução
-   ↓
-Análise dos resultados
-   ↓
-Feedback
-   ↓
-Melhoria contínua
+*Qualidade é uma prática contínua: entender, testar, aprender e melhorar.*
+
+</div>
