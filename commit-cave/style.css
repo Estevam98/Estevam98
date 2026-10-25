@@ -274,3 +274,9 @@ footer{border-top:1px solid #373149;padding-top:18px;display:flex;justify-conten
 .game-scene.world-blooming .cave-back-wall{filter:saturate(1.25) brightness(1.08)}
 .game-scene.world-blooming .grass-patches{filter:drop-shadow(0 0 4px #40ff6755)}
 @media(prefers-reduced-motion:reduce){#commitCaveGame{display:none}}
+
+/* Keep existing clickable commit-bats and hero above the transparent Phaser layer. */
+#commitCaveGame{z-index:6!important}
+.game-scene .bats{z-index:12!important}
+.game-scene .caveman{z-index:13!important}
+.game-scene .fire-area{z-index:10!important}
