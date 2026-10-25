@@ -64,6 +64,7 @@ async function main() {
     const commits = Array.isArray(data.commits) ? data.commits : [];
     const last = data.lastCommit || commits.reduce((latest, commit) => !latest || new Date(commit.date) > new Date(latest.date) ? commit : latest, null);
     renderBats(commits);
+    updateProgression(data, commits, last);
     $('totalCommits').textContent = new Intl.NumberFormat('pt-BR').format(data.totalCommits ?? commits.length);
     if (last) {
       const days = ageDays(last.date);
@@ -118,3 +119,12 @@ main();
     });
   });
 })();
+
+function updateProgression(data, commits, last) {
+ const total=Number(data.totalCommits??commits.length), repos=Number(data.repositoriesScanned??0);
+ const level=Math.max(1,Math.floor(total/25)+1), days=last?ageDays(last.date):7;
+ $('levelLabel').textContent='NÍVEL '+level;$('xpBar').style.width=(total%25/25*100)+'%';
+ $('hudCommits').textContent=new Intl.NumberFormat('pt-BR').format(total);$('hudRepos').textContent=repos;$('hudActivity').textContent=last?relative(days):'NENHUMA';
+ $('waterBar').style.width=Math.max(5,100-Math.min(days,10)*8)+'%';$('hungerBar').style.width=Math.min(100,18+Math.max(0,days-1)*20)+'%';$('evolutionBar').style.width=Math.min(100,12+level*7)+'%';
+ const toast=$('rewardToast');if(toast&&days===0){toast.hidden=false;toast.textContent='+1 ÁGUA · NOVO COMMIT';setTimeout(()=>{toast.hidden=true},4200)}
+}
