@@ -59,8 +59,15 @@ async function listWorkflowResults(repo) {
     const relevant = (payload.workflow_runs || []).filter(run => {
       const label = ((run.name || '') + ' ' + (run.path || '')).toLowerCase();
       return /test|ci|quality|e2e|playwright|cypress|postman|newman|automation|spec/.test(label);
-    });
+    }).sort((a,b) => new Date(b.created_at) - new Date(a.created_at));
+    // Count only the latest run for each workflow so an old failure does not
+    // keep the cave red after a newer successful run of the same workflow.
+    const latestByWorkflow = new Map();
     for (const run of relevant) {
+      const key = String(run.workflow_id || run.name || run.path);
+      if (!latestByWorkflow.has(key)) latestByWorkflow.set(key, run);
+    }
+    for (const run of latestByWorkflow.values()) {
       result.checkedRuns++;
       if (run.status !== 'completed') result.pendingRuns++;
       else if (run.conclusion === 'success') result.successfulRuns++;
