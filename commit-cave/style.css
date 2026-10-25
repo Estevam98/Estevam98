@@ -219,3 +219,49 @@ footer{border-top:1px solid #373149;padding-top:18px;display:flex;justify-conten
 .fallen-bat[hidden]{display:none}.fallen-bat .bones{font-size:22px;color:#d4d0c8}
 .game-scene .scene-footer{z-index:12;text-shadow:2px 2px #080710}
 @media(max-width:760px){.cave-frame.game-scene{height:560px}.game-scene .wall-tools{top:34%;left:2%;font-size:7px;padding:7px 5px}.game-scene .wall-banner{width:95px;font-size:7px}.game-scene .banner-red{left:auto;right:3%;top:36%}.game-scene .banner-green{right:3%;top:50%}.game-scene .game-hud{transform:scale(.72);transform-origin:top left}.game-scene .world-stats{left:8px;right:8px;top:92px}.game-scene .bats{inset:170px 15% 125px}.game-scene .caveman{left:calc(50% - 125px);bottom:60px;transform:scale(.92)}.water-pool{left:13%;width:65px}.fallen-bat{right:8%;bottom:95px}}
+
+/* Reference-match pass: replace geometric crosshatch with layered gothic pixel scenery */
+.shell{width:min(1420px,calc(100% - 40px))}
+.intro{max-width:900px;padding:30px 0 24px}
+.intro h1{font-size:clamp(34px,4.8vw,58px)}
+.intro .lede{max-width:760px}
+.cave-frame.game-scene{height:clamp(560px,66vw,760px);width:100%;border:5px solid #53517f;box-shadow:0 0 0 4px #171326,7px 7px 0 #03040a; background:#050918}
+.game-scene .cave-sky{background:radial-gradient(circle at 30% 42%,#3d79cf 0 3%,#173f80 4% 12%,#0b204a 25%,transparent 45%),linear-gradient(90deg,#070b1a 0%,#102b58 30%,#080d20 62%,#06121d 100%)}
+.game-scene .cave-back-wall{inset:0;background-color:#10172c;background-image:
+ repeating-linear-gradient(0deg,transparent 0 34px,#060b19 35px 40px,transparent 41px 69px),
+ repeating-linear-gradient(90deg,transparent 0 52px,#080d1d 53px 59px,transparent 60px 104px),
+ linear-gradient(135deg,transparent 0 44%,#333047 45% 50%,transparent 51%),
+ linear-gradient(45deg,transparent 0 45%,#202b46 46% 52%,transparent 53%);
+ background-size:100% 72px,110px 100%,140px 120px,160px 140px;opacity:.96}
+.game-scene .cave-back-wall:before{content:"";position:absolute;left:20%;top:14%;width:26%;height:64%;background:radial-gradient(circle at 50% 18%,#6ea5e9 0 7%,#294c84 8% 10%,transparent 11%),linear-gradient(180deg,#152c54,#0b142b);clip-path:polygon(45% 0,55% 0,55% 13%,68% 13%,68% 24%,78% 24%,78% 35%,91% 35%,91% 49%,100% 49%,100% 100%,0 100%,0 50%,12% 50%,12% 38%,26% 38%,26% 25%,38% 25%,38% 13%,45% 13%);filter:drop-shadow(0 0 12px #3285ff)}
+.game-scene .cave-back-wall:after{content:"";position:absolute;inset:0;background:repeating-linear-gradient(0deg,transparent 0 3px,#0307142c 4px 5px);pointer-events:none}
+.game-scene .cave-side{width:15%;background:repeating-linear-gradient(0deg,#141525 0 18px,#3a2b39 19px 23px,#211d31 24px 42px,#090d1c 43px 47px);border-color:#76513f;box-shadow:inset -10px 0 #070a16,inset 5px 0 #413047}
+.game-scene .left-side{clip-path:polygon(0 0,100% 0,81% 13%,96% 24%,78% 38%,100% 50%,78% 65%,100% 83%,85% 100%,0 100%)}
+.game-scene .right-side{clip-path:polygon(0 0,100% 0,100% 100%,15% 100%,0 83%,22% 65%,0 50%,22% 38%,4% 24%,19% 13%)}
+.game-scene .stalactites{height:145px;background:repeating-linear-gradient(90deg,#070812 0 22px,#292238 23px 33px,#0a0c19 34px 51px);clip-path:polygon(0 0,100% 0,100% 28%,95% 28%,91% 78%,86% 31%,80% 31%,76% 63%,72% 31%,65% 30%,59% 100%,55% 32%,48% 32%,43% 76%,38% 30%,30% 30%,25% 88%,21% 30%,13% 30%,8% 77%,4% 30%,0 30%)}
+.game-scene .depth-back{z-index:2;opacity:.5;background:repeating-linear-gradient(0deg,transparent 0 45px,#3c2d40 46px 51px);transform:perspective(500px) rotateX(10deg)}
+.game-scene .depth-mid{z-index:3;opacity:.6;background:linear-gradient(180deg,transparent 55%,#11182c 56%,#24263a 64%,transparent 65%)}
+.game-scene .wall-tools{top:23%;left:2.5%;padding:12px 9px;background:#0d1227eF;color:#aaa5c7;border-color:#4d3d54;font-size:clamp(8px,.85vw,12px)}
+.game-scene .wall-banner{font-size:clamp(8px,.85vw,12px);line-height:1.8;padding:12px 8px;width:clamp(105px,11vw,155px);clip-path:polygon(0 0,100% 0,100% 87%,50% 100%,0 87%)}
+.game-scene .banner-red{left:68%;top:18%;background:#301521;color:#ff8b82;border-color:#7e3c48}
+.game-scene .banner-green{right:3%;top:20%;background:#102719;color:#8bff63;border-color:#347b40}
+.game-scene .bats{inset:12% 15% 23%;z-index:7}
+.game-scene .bat{width:clamp(28px,3vw,43px);height:32px}
+.game-scene .bat:after{width:100%;height:24px;background:currentColor;filter:drop-shadow(0 0 2px #f94ce8)}
+.game-scene .bat.young{color:#ff48d3}.game-scene .bat.grown{color:#b56cff}.game-scene .bat.old{color:#777eaa}
+.game-scene .caveman{left:28%;bottom:13%;transform:scale(1.45);z-index:10}
+.game-scene .fire-area{left:43%;bottom:8%;transform:translateX(-50%) scale(1.5);z-index:10}
+.game-scene .ground{height:15%;z-index:9;border-top:5px solid #806044;background:repeating-linear-gradient(90deg,#22273e 0 28px,#3b3548 29px 49px,#16182b 50px 55px);clip-path:polygon(0 12%,8% 12%,8% 0,17% 0,17% 18%,29% 18%,29% 7%,41% 7%,41% 22%,57% 22%,57% 6%,70% 6%,70% 19%,85% 19%,85% 0,100% 0,100% 100%,0 100%)}
+.game-scene .ground:after{content:"";position:absolute;left:4%;bottom:100%;width:18%;height:9px;background:#6e5038;box-shadow:0 8px #2b2333,0 16px #15182a}
+.game-scene .ground:before{background:repeating-linear-gradient(90deg,transparent 0 43px,#090c19 44px 49px),repeating-linear-gradient(0deg,transparent 0 17px,#090c19 18px 22px)}
+.game-scene .water-pool{left:9%;bottom:15%;width:9%;height:12px;background:#19a8f7;border:0;box-shadow:0 9px #148bd5,0 18px #075ca3,0 27px #06447e,0 36px #0c315a;clip-path:none;animation:waterShimmer .8s steps(3,end) infinite}
+.game-scene .grass-patches{height:42px;bottom:14%;background:repeating-linear-gradient(110deg,transparent 0 18px,#3dce54 19px 23px,transparent 24px 36px),repeating-linear-gradient(75deg,transparent 0 27px,#1c7b40 28px 32px,transparent 33px 44px);opacity:.8}
+.game-scene .cave-glow{left:43%;bottom:9%;width:420px;height:260px;background:radial-gradient(ellipse,#ff8d2e66 0,#f24b2630 38%,transparent 73%)}
+.game-scene .fallen-bat{right:38%;bottom:16%;font-size:clamp(8px,.8vw,11px)}
+.game-scene .game-hint{bottom:17%;left:2%;z-index:11}
+.game-scene .scene-footer{z-index:13}
+.game-scene .game-hud{top:2%;left:2%;transform:scale(1.04);transform-origin:top left}
+.game-scene .world-stats{top:2%;right:2%}
+.game-scene:after{opacity:.12;background:repeating-linear-gradient(0deg,transparent 0 3px,#02030a 4px 5px)}
+@keyframes waterShimmer{0%,100%{filter:brightness(.85)}50%{filter:brightness(1.3)}}
+@media(max-width:760px){.shell{width:calc(100% - 16px)}.intro{padding:24px 0 18px}.cave-frame.game-scene{height:560px}.game-scene .caveman{left:26%;bottom:14%;transform:scale(.92)}.game-scene .fire-area{left:48%;bottom:8%;transform:translateX(-50%) scale(1.05)}.game-scene .world-stats{top:75px;left:8px;right:8px}.game-scene .game-hud{transform:scale(.72)}.game-scene .wall-tools{top:27%;left:2%;font-size:7px}.game-scene .banner-red{left:auto;right:2%;top:28%}.game-scene .banner-green{right:2%;top:43%}.game-scene .bats{inset:22% 12% 25%}.game-scene .water-pool{left:5%;width:12%}}
