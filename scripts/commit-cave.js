@@ -52,14 +52,61 @@ async function listMyCommits(repo) {
   return found;
 }
 
+async function listWorkflowResults(repo) {
+  const result = { successfulRuns: 0, failedRuns: 0, pendingRuns: 0, checkedRuns: 0, latestConclusion: null, latestRunAt: null, latestRunUrl: null, runs: [] };
+  try {
+    const payload = await getJson('https://api.github.com/repos/' + encodeURIComponent(login) + '/' + encodeURIComponent(repo.name) + '/actions/runs?per_page=30');
+    const relevant = (payload.workflow_runs || []).filter(run => {
+      const label = ((run.name || '') + ' ' + (run.path || '')).toLowerCase();
+      return /test|ci|quality|e2e|playwright|cypress|postman|newman|automation|spec/.test(label);
+    });
+    for (const run of relevant) {
+      result.checkedRuns++;
+      if (run.status !== 'completed') result.pendingRuns++;
+      else if (run.conclusion === 'success') result.successfulRuns++;
+      else if (['failure', 'timed_out', 'cancelled', 'action_required'].includes(run.conclusion)) result.failedRuns++;
+      result.runs.push({
+        name: run.name || 'GitHub Actions',
+        status: run.status,
+        conclusion: run.conclusion,
+        createdAt: run.created_at,
+        url: run.html_url,
+        repository: repo.name
+      });
+    }
+    result.runs.sort((a,b) => new Date(b.createdAt) - new Date(a.createdAt));
+    if (result.runs.length) {
+      result.latestConclusion = result.runs[0].conclusion || result.runs[0].status;
+      result.latestRunAt = result.runs[0].createdAt;
+      result.latestRunUrl = result.runs[0].url;
+    }
+  } catch (error) {
+    console.log('Actions indisponível em ' + repo.name + ': ' + error.message);
+  }
+  return result;
+}
+
 async function main() {
   const repos = await listAllPublicRepos();
   const all = [];
-  // Sequential requests are deliberate to avoid bursting the GitHub API rate limit.
+  const ci = { successfulRuns: 0, failedRuns: 0, pendingRuns: 0, checkedRuns: 0, latestConclusion: null, latestRunAt: null, latestRunUrl: null, runs: [] };
+  // Sequential requests reduce API bursts and keep collection within rate limits.
   for (const repo of repos) {
     const commits = await listMyCommits(repo);
     all.push(...commits);
-    console.log(repo.full_name + ': ' + commits.length + ' commits attributed to ' + login);
+    const workflow = await listWorkflowResults(repo);
+    ci.successfulRuns += workflow.successfulRuns;
+    ci.failedRuns += workflow.failedRuns;
+    ci.pendingRuns += workflow.pendingRuns;
+    ci.checkedRuns += workflow.checkedRuns;
+    ci.runs.push(...workflow.runs);
+    console.log(repo.full_name + ': ' + commits.length + ' commits; ' + workflow.checkedRuns + ' relevant workflow runs');
+  }
+  ci.runs.sort((a,b) => new Date(b.createdAt) - new Date(a.createdAt));
+  if (ci.runs.length) {
+    ci.latestConclusion = ci.runs[0].conclusion || ci.runs[0].status;
+    ci.latestRunAt = ci.runs[0].createdAt;
+    ci.latestRunUrl = ci.runs[0].url;
   }
   all.sort((a, b) => new Date(b.date) - new Date(a.date));
   const data = {
@@ -68,6 +115,7 @@ async function main() {
     repositoriesScanned: repos.length,
     totalCommits: all.length,
     lastCommit: all[0] || null,
+    ci,
     commits: all
   };
   const output = path.join(process.cwd(), 'commit-cave', 'data', 'commits.json');
