@@ -23,11 +23,11 @@
       <p class="lede">Cada commit desperta um morcego. Explore a caverna em estilo retrô 3D: quanto mais tempo sem programar, mais a fome toma conta do explorador.</p>
     </section>
 
-    <section class="cave-frame" id="caveFrame" aria-label="Caverna animada em estilo retrô">
+    <section class="cave-frame game-scene" id="caveFrame" aria-label="Caverna pixel art com progressão baseada no GitHub">
       <div class="cave-sky"></div>
       <div class="cave-glow"></div>
-      <div class="stalactites" aria-hidden="true"></div>
-      <div class="cave-label"><span>COMMIT CAVE · SETOR 01</span><span id="caveMood">A chama está tranquila</span></div><div class="depth-layer depth-back" aria-hidden="true"></div><div class="depth-layer depth-mid" aria-hidden="true"></div>
+      <div class="stalactites" aria-hidden="true"></div><div class="wall-tools"><span>⚔ PLAYWRIGHT</span><span>⌘ POSTMAN</span><span>◇ GITHUB ACTIONS</span><span>JS JAVASCRIPT</span><span>PY PYTHON</span><span>◈ GIT</span></div><div class="wall-banner banner-red">AUTOMAÇÃO · TESTES · QUALIDADE</div><div class="wall-banner banner-green">EVOLUÇÃO É UM PROCESSO</div>
+      <div class="cave-label"><span>COMMIT CAVE · CASTELO DA QUALIDADE</span><span id="caveMood">A chama está tranquila</span></div><div class="game-hud"><div class="hero-level"><span class="portrait">LE</span><div><b>LUCAS · QA</b><small id="levelLabel">NÍVEL 1</small><div class="xp-track"><i id="xpBar"></i></div></div></div><div class="hud-bars"><div class="hud-bar hunger"><span>♥ FOME</span><i><b id="hungerBar"></b></i></div><div class="hud-bar water"><span>♦ ÁGUA</span><i><b id="waterBar"></b></i></div><div class="hud-bar evolution"><span>✦ EVOLUÇÃO</span><i><b id="evolutionBar"></b></i></div></div></div><div class="world-stats"><span>COMMITS <b id="hudCommits">—</b></span><span>REPOSITÓRIOS <b id="hudRepos">—</b></span><span>ÚLTIMA ATIVIDADE <b id="hudActivity">—</b></span><a href="https://github.com/Estevam98/Estevam98/actions/workflows/commit-cave.yml" target="_blank" rel="noreferrer">ACTIONS ↗</a></div><div class="depth-layer depth-back" aria-hidden="true"></div><div class="depth-layer depth-mid" aria-hidden="true"></div>
       <div id="bats" class="bats" aria-label="Morcegos que representam commits"></div>
       <div class="fire-area" aria-hidden="true">
         <div class="smoke smoke-one"></div><div class="smoke smoke-two"></div>
@@ -42,7 +42,7 @@
         <div class="body"><i class="arm"></i><i class="belt"></i></div>
         <div class="legs"><i></i><i></i></div>
       </div>
-      <div class="ground"></div><div class="game-hint" aria-hidden="true">MUNDO VIVO · MORCEGOS = COMMITS</div>
+      <div class="ground"></div><div class="game-hint" aria-hidden="true">MUNDO VIVO · MORCEGOS = COMMITS</div><div id="rewardToast" class="reward-toast" hidden>+1 ÁGUA · NOVO COMMIT</div>
       <div class="scene-footer"><span>☼ FOGO ACESO</span><span id="sceneLastCommit">Rastreando pegadas...</span></div>
     </section>
 
@@ -52,14 +52,14 @@
       <article class="stat-card"><span class="stat-icon">🔥</span><div><p>FOME DO EXPLORADOR</p><strong id="hungerLabel">—</strong><small id="hungerDetail">a chama acompanha a rotina</small></div></article>
     </section>
 
-    <section class="legend">
+    <section class="ci-panel" aria-label="Status do GitHub Actions"><div><span class="ci-light"></span><div><b>GITHUB ACTIONS</b><small>Deploy e atualização dos dados da caverna</small></div></div><a href="https://github.com/Estevam98/Estevam98/actions/workflows/commit-cave.yml" target="_blank" rel="noreferrer"><img src="https://github.com/Estevam98/Estevam98/actions/workflows/commit-cave.yml/badge.svg" alt="Status do workflow Commit Cave"></a></section><section class="legend">
       <div><span class="legend-bat young">◆</span><span><b>Morcego jovem</b><small>commit recente</small></span></div>
       <div><span class="legend-bat grown">◆</span><span><b>Morcego adulto</b><small>commit com alguns dias</small></span></div>
       <div><span class="legend-bat old">◆</span><span><b>Morcego antigo</b><small>história acumulada</small></span></div>
     </section>
 
     <footer>
-      <p id="updateStatus">Os dados da caverna são atualizados automaticamente pelo GitHub Actions.</p>
+      <p id="updateStatus">Cada commit alimenta a caverna. A evolução por testes depende dos resultados reais de CI publicados nos repositórios.</p>
       <a href="https://github.com/Estevam98">Lucas Estevam ↗</a>
     </footer>
   </main>
