@@ -265,3 +265,12 @@ footer{border-top:1px solid #373149;padding-top:18px;display:flex;justify-conten
 .game-scene:after{opacity:.12;background:repeating-linear-gradient(0deg,transparent 0 3px,#02030a 4px 5px)}
 @keyframes waterShimmer{0%,100%{filter:brightness(.85)}50%{filter:brightness(1.3)}}
 @media(max-width:760px){.shell{width:calc(100% - 16px)}.intro{padding:24px 0 18px}.cave-frame.game-scene{height:560px}.game-scene .caveman{left:26%;bottom:14%;transform:scale(.92)}.game-scene .fire-area{left:48%;bottom:8%;transform:translateX(-50%) scale(1.05)}.game-scene .world-stats{top:75px;left:8px;right:8px}.game-scene .game-hud{transform:scale(.72)}.game-scene .wall-tools{top:27%;left:2%;font-size:7px}.game-scene .banner-red{left:auto;right:2%;top:28%}.game-scene .banner-green{right:2%;top:43%}.game-scene .bats{inset:22% 12% 25%}.game-scene .water-pool{left:5%;width:12%}}
+
+/* Phaser canvas layer: transparent pixel-art animation over the composed cave. */
+#commitCaveGame{position:absolute!important;inset:0!important;overflow:hidden;pointer-events:none;z-index:8;image-rendering:pixelated}
+#commitCaveGame canvas{display:block;width:100%!important;height:100%!important;image-rendering:pixelated;object-fit:fill}
+.game-scene.world-failed{box-shadow:0 0 0 4px #171326,0 0 26px #ff344a66,7px 7px 0 #03040a}
+.game-scene.world-failed:before{content:"";position:absolute;inset:0;z-index:11;pointer-events:none;background:linear-gradient(0deg,#6d08151c,transparent 65%);mix-blend-mode:screen}
+.game-scene.world-blooming .cave-back-wall{filter:saturate(1.25) brightness(1.08)}
+.game-scene.world-blooming .grass-patches{filter:drop-shadow(0 0 4px #40ff6755)}
+@media(prefers-reduced-motion:reduce){#commitCaveGame{display:none}}
