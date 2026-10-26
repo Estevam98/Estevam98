@@ -280,3 +280,25 @@ footer{border-top:1px solid #373149;padding-top:18px;display:flex;justify-conten
 .game-scene .bats{z-index:12!important}
 .game-scene .caveman{z-index:13!important}
 .game-scene .fire-area{z-index:10!important}
+
+/* Unified scene remaster: the Phaser canvas is the world, not a decorative overlay. */
+#commitCaveGame{
+  position:absolute!important;inset:0!important;width:100%;height:100%;overflow:hidden;
+  z-index:4!important;pointer-events:auto;image-rendering:pixelated;background:#070914;
+}
+#commitCaveGame canvas{
+  display:block!important;width:100%!important;height:100%!important;
+  image-rendering:pixelated;object-fit:fill;cursor:crosshair;
+}
+/* Hide the former CSS illustration so the new world is not doubled or mis-layered. */
+.cave-frame>.cave-sky,.cave-frame>.cave-back-wall,.cave-frame>.cave-side,
+.cave-frame>.grass-patches,.cave-frame>.cave-glow,.cave-frame>.stalactites,
+.cave-frame>.wall-tools,.cave-frame>.wall-banner,.cave-frame>.depth-layer,
+.cave-frame>#bats,.cave-frame>#waterPool,.cave-frame>.fire-area,
+.cave-frame>#caveman,.cave-frame>.ground,.cave-frame>#fallenBat,
+.cave-frame>.game-hint,.cave-frame>#rewardToast{display:none!important}
+.cave-frame>.cave-label,.cave-frame>.game-hud,.cave-frame>.world-stats,
+.cave-frame>.scene-footer{display:none!important}
+.cave-frame::before{display:none!important}
+.cave-frame{height:clamp(380px,53vw,620px)!important;min-height:380px;background:#070914!important;overflow:hidden}
+@media(max-width:680px){.cave-frame{height:430px!important;min-height:430px}}
