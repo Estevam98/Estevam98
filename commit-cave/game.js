@@ -24,6 +24,13 @@
     gold: 0xffd66b, red: 0xff354f, purple: 0xb59bff, pink: 0xff4fcf
   };
 
+  function preload() {
+    this.load.svg('caveBackdrop', './assets/cave-backdrop.svg');
+    this.load.svg('heroSprite', './assets/hero-explorer.svg');
+    this.load.svg('batSprite', './assets/bat.svg');
+    this.load.svg('fireSprite', './assets/fire.svg');
+  }
+
   new Phaser.Game({
     type: Phaser.CANVAS,
     parent: mount,
@@ -32,7 +39,7 @@
     antialias: false, pixelArt: true, roundPixels: true,
     render: { pixelArt: true, antialias: false, roundPixels: true, transparent: false },
     scale: { mode: Phaser.Scale.FIT, autoCenter: Phaser.Scale.CENTER_BOTH },
-    scene: { create, update }
+    scene: { preload, create, update }
   });
 
   function create() {
@@ -44,6 +51,7 @@
     };
     this.elapsed = 0;
     this.hero = { x: 315, y: 390, jump: 0, cheer: 0, hungry: false, mode: 'idle', modeUntil: 0, direction: 1 };
+    this.add.image(480,260,'caveBackdrop').setDisplaySize(960,520).setDepth(0);
     drawBackdrop.call(this);
     drawPlatforms.call(this);
     drawWaterfalls.call(this);
@@ -55,7 +63,7 @@
 
     this.input.on('pointerdown', pointer => {
       const x = pointer.x, y = pointer.y;
-      const hit = this.world.bats.some(b => Phaser.Math.Distance.Between(x, y, b.container.x, b.container.y) < 23);
+      const hit = this.world.bats.some(b => Phaser.Math.Distance.Between(x, y, b.sprite.x, b.sprite.y) < 23);
       if (hit) return;
       if (y > this.scale.height * .42) {
         this.hero.cheer = 1.25;
@@ -94,7 +102,7 @@
 
   function drawBackdrop() {
     const w = 960, h = 520;
-    rect(w/2,h/2,w,h,COLORS.void,1,0);
+    rect(w/2,h/2,w,h,COLORS.void,1,-1);
     // Moonlit castle far behind the cave mouth.
     rect(295,190,235,255,0x101b3b,.95,0);
     rect(295,205,165,230,0x142954,.9,0);
@@ -254,9 +262,7 @@
   }
 
   function drawHero(){
-    this.heroParts=this.add.container(0,0).setDepth(19);
-    const p=this.heroParts;
-    const part=(x,y,w,h,c)=>{const q=rect(x,y,w,h,c,1,19);p.add(q);return q;};
+    this.heroParts=this.add.image(315,390,'heroSprite').setOrigin(.5,1).setScale(1.65).setDepth(19);
     // Original chunky sprite: dark skin, textured hair, beard, leather tunic and boots.
     part(0,22,42,5,0x070914);
     part(-12,-18,8,26,0x2a202d); part(12,-18,8,26,0x2a202d);
@@ -308,7 +314,7 @@
 
   function rebuildBats(){
     if(!gameScene || !gameScene.world) return;
-    gameScene.world.bats.forEach(b=>b.container.destroy());
+    gameScene.world.bats.forEach(b=>b.sprite.destroy());
     gameScene.world.bats=[];
     const commits=Array.isArray(window.commitCaveCommits)?window.commitCaveCommits:[];
     const total=Math.max(0,Number(state.totalCommits)||commits.length);
@@ -316,23 +322,13 @@
     for(let i=0;i<count;i++){
       const commit=commits[i]||null;
       const ageDays=commit?.date?Math.max(0,(Date.now()-new Date(commit.date).getTime())/86400000):i%40;
-      const color=ageDays<3?COLORS.gold:ageDays<30?COLORS.pink:COLORS.purple;
-      const c=gameScene.add.container(180+(i*71)%590,130+(i*43)%205).setDepth(15);
-      const wingL=rect(0,0,13,7,color,1,15);wingL.setAngle(-18);
-      const wingR=rect(0,0,13,7,color,1,15);wingR.setAngle(18);
-      const body=rect(0,0,7,9,0x21172e,1,16);
-      const earL=rect(-3,-6,3,5,color,1,16),earR=rect(3,-6,3,5,color,1,16);
-      const eyeL=rect(-2,0,2,2,0xffe5ff,1,17),eyeR=rect(2,0,2,2,0xffe5ff,1,17);
-      const tail=rect(0,7,3,5,color,1,15);
-      c.add([wingL,wingR,body,earL,earR,eyeL,eyeR,tail]);
-      c.setSize(32,22).setInteractive(new Phaser.Geom.Rectangle(-16,-11,32,22),Phaser.Geom.Rectangle.Contains);
-      c.on('pointerover',()=>gameScene.input.setDefaultCursor('pointer'));
-      c.on('pointerout',()=>gameScene.input.setDefaultCursor('default'));
-      c.on('pointerdown',()=>{if(commit?.url)window.open(commit.url,'_blank','noopener,noreferrer');else if(commit?.repository)window.open('https://github.com/Estevam98/'+commit.repository,'_blank','noopener,noreferrer');});
-      const b={container:c,left:wingL,right:wingR,seed:i*.83,baseY:130+(i*43)%205,baseX:180+(i*71)%590,ageDays,url:commit?.url,repository:commit?.repository};
+      const sprite=gameScene.add.image(180+(i*71)%590,130+(i*43)%205,'batSprite').setDepth(15).setScale(ageDays<3?1.05:ageDays<30?.9:.72);
+      sprite.setTint(ageDays<3?0xffd66b:ageDays<30?0xff4fcf:0xb59bff);
+      sprite.setInteractive({useHandCursor:true});
+      sprite.on('pointerdown',()=>{if(commit?.url)window.open(commit.url,'_blank','noopener,noreferrer');else if(commit?.repository)window.open('https://github.com/Estevam98/'+commit.repository,'_blank','noopener,noreferrer');});
+      const b={sprite,seed:i*.83,baseY:130+(i*43)%205,baseX:180+(i*71)%590,ageDays,url:commit?.url,repository:commit?.repository};
       gameScene.world.bats.push(b);
     }
-    gameScene.world.bats.sort((a,b)=>a.ageDays-b.ageDays);
   }
 
   function refreshWorldState(){
@@ -372,11 +368,9 @@
     this.elapsed+=delta/1000;
     const t=this.elapsed, h=this.scale.height;
     this.world.bats.forEach((b,i)=>{
-      b.left.angle=-20+Math.sin(t*10+b.seed)*35;
-      b.right.angle=20-Math.sin(t*10+b.seed)*35;
-      b.container.x=b.baseX+Math.sin(t*.42+b.seed)*22;
-      b.container.y=b.baseY+Math.sin(t*(.65+(i%4)*.13)+b.seed)*11;
-      b.container.setScale(b.ageDays<3?1.25:b.ageDays<30?1:.78);
+      b.sprite.x=b.baseX+Math.sin(t*.42+b.seed)*22;
+      b.sprite.y=b.baseY+Math.sin(t*(.65+(i%4)*.13)+b.seed)*11;
+      b.sprite.setScale((b.ageDays<3?1.05:b.ageDays<30?.9:.72), (b.ageDays<3?1.05:b.ageDays<30?.9:.72)*(0.72+Math.abs(Math.sin(t*10+b.seed))*.45));
     });
     this.world.water.forEach((p,i)=>{p.y+=Math.sin(t*4+i)*.06;p.setAlpha(.55+.4*Math.abs(Math.sin(t*3+i)));});
     this.world.grass.forEach((g,i)=>{g.angle=Math.sin(t*2+i)*8;});
