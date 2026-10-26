@@ -66,7 +66,7 @@
         this.hero.direction = this.hero.targetX >= this.hero.x ? 1 : -1;
       }
     });
-    this.scale.on('resize', size => this.layout(size.width, size.height));
+    this.scale.on('resize', size => layout(size.width, size.height));
     window.addEventListener('commit-cave-state', event => {
       Object.assign(state, event.detail || {});
       this.rebuildBats();
@@ -361,11 +361,11 @@
     s.heroParts.setAlpha(s.hero.hungry?.8:1);
   }
 
-  function layout(w,h){
+  function layout(_w,_h){
     if(!gameScene || !gameScene.world) return;
-    const sx=w/960, sy=h/520;
-    gameScene.cameras.main.setZoom(Math.min(sx,sy));
-    gameScene.cameras.main.setScroll((960-w/Math.max(sx,.01))/2,(520-h/Math.max(sy,.01))/2);
+    // Phaser Scale.FIT scales the canvas to its parent; keep world coordinates stable.
+    gameScene.cameras.main.setZoom(1);
+    gameScene.cameras.main.setScroll(0,0);
   }
 
   function update(_time,delta){
