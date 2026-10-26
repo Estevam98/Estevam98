@@ -43,7 +43,7 @@
       bones: [], crystals: [], torches: [], platforms: [], foliage: []
     };
     this.elapsed = 0;
-    this.hero = { x: 315, y: 390, jump: 0, cheer: 0, hungry: false };
+    this.hero = { x: 315, y: 390, jump: 0, cheer: 0, hungry: false, mode: 'idle', modeUntil: 0, direction: 1 };
     drawBackdrop.call(this);
     drawPlatforms.call(this);
     drawWaterfalls.call(this);
@@ -60,6 +60,10 @@
       if (y > this.scale.height * .42) {
         this.hero.cheer = 1.25;
         this.hero.jump = 1;
+        this.hero.mode = 'walk';
+        this.hero.modeUntil = this.elapsed + 2.5;
+        this.hero.targetX = Phaser.Math.Clamp(x, 80, 900);
+        this.hero.direction = this.hero.targetX >= this.hero.x ? 1 : -1;
       }
     });
     this.scale.on('resize', size => this.layout(size.width, size.height));
@@ -68,7 +72,8 @@
       this.rebuildBats();
       this.refreshWorldState();
     });
-    this.layout(this.scale.width, this.scale.height);
+    layout(this.scale.width, this.scale.height);
+    host.classList.add('phaser-ready');
   }
 
   function rect(x, y, w, h, color, alpha = 1, depth = 1) {
@@ -217,7 +222,9 @@
       rect(t.x,t.y+3,11,12,0xff6d2d,1,14);
       pixel(t.x,t.y-2,0xffd56a,5,15);
       pixel(t.x+2,t.y+6,0xfff1a1,3,15);
-      this.world.torches.push({x:t.x,y:t.y,flame:rect(t.x,t.y-6,4,5,0xffe18a,1,16)});
+      const flame=rect(t.x,t.y-6,4,5,0xffe18a,1,16);
+      const flameCore=rect(t.x,t.y+1,3,4,0xff762e,1,16);
+      this.world.torches.push({x:t.x,y:t.y,flame,flameCore});
     }
     for(let i=0;i<34;i++){
       const x=8+i*29, y=389+(i%3)*5;
@@ -376,10 +383,21 @@
     this.world.foliage.forEach((g,i)=>{g.angle=Math.sin(t*2.3+i)*12;});
     this.world.torches.forEach((f,i)=>{
       const flicker=Math.sin(t*14+i*2);
-      pixel(f.x,f.y-6-(flicker>0?3:0),flicker>0?0xffe18a:0xff762e,4,16);
+      f.flame.y=f.y-6-(flicker>0?3:0);
+      f.flame.setFillStyle(flicker>0?0xffe18a:0xff762e);
+      f.flameCore.y=f.y+1+(flicker<0?2:0);
+      f.flameCore.setAlpha(.7+Math.abs(flicker)*.3);
     });
+    if(this.hero.mode==='walk' && this.hero.targetX!==undefined){
+      const distance=this.hero.targetX-this.hero.x;
+      this.hero.x+=Math.sign(distance)*Math.min(Math.abs(distance),delta*.085);
+      if(Math.abs(distance)<2 || t>this.hero.modeUntil){this.hero.mode='idle';this.hero.targetX=undefined;}
+    }
+    if(this.hero.mode==='idle' && !this.hero.hungry && Math.sin(t*.07)>.998){this.hero.mode='sleep';this.hero.modeUntil=t+4;}
+    if(this.hero.mode==='sleep' && t>this.hero.modeUntil)this.hero.mode='idle';
     this.heroParts.x=this.hero.x+Math.sin(t*2)*1.5;
-    this.heroParts.y=this.hero.y+(this.hero.hungry?Math.sin(t*4)*2:Math.sin(t*2)*1);
+    this.heroParts.y=this.hero.y+(this.hero.hungry?Math.sin(t*4)*2:this.hero.mode==='sleep'?4+Math.sin(t*3)*1.5:Math.sin(t*2)*1);
+    this.heroParts.setAngle(this.hero.mode==='walk'?Math.sin(t*12)*5:this.hero.mode==='sleep'?-5:0);
     if(this.hero.cheer>0){this.hero.cheer-=delta/1000;this.heroParts.y-=Math.abs(Math.sin(t*13))*8;}
     this.heroShadow.x=this.heroParts.x;this.heroAura.x=this.heroParts.x;
     this.heroShadow.y=this.hero.y+47;this.heroAura.y=this.hero.y-58;
