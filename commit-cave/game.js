@@ -200,7 +200,7 @@
     drawItem.call(this,829,450,'crystal');
   }
 
-  drawItem(x,y,type){
+  function drawItem(x,y,type){
     if(type==='water'){
       rect(x,y,14,20,0x0a2440,1,16);
       rect(x,y-2,8,4,0x9a6a35,1,17);
