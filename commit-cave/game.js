@@ -53,7 +53,7 @@
       bones: [], crystals: [], torches: [], platforms: [], foliage: []
     };
     this.elapsed = 0;
-    this.hero = { x: 315, y: 390, jump: 0, cheer: 0, hungry: false, mode: 'idle', modeUntil: 0, direction: 1 };
+    this.hero = { x: 315, y: 390, jump: 0, cheer: 0, hungry: false, mode: 'idle', modeUntil: 0, direction: 1, nextActionAt: 2.5, restCount: 0 };
     this.add.image(480,260,'caveBackdrop').setDisplaySize(960,520).setDepth(0);
     drawBackdrop.call(this);
     drawPlatforms.call(this);
@@ -64,19 +64,8 @@
     rebuildBats();
     refreshWorldState();
 
-    this.input.on('pointerdown', pointer => {
-      const x = pointer.x, y = pointer.y;
-      const hit = this.world.bats.some(b => Phaser.Math.Distance.Between(x, y, b.sprite.x, b.sprite.y) < 23);
-      if (hit) return;
-      if (y > this.scale.height * .42) {
-        this.hero.cheer = 1.25;
-        this.hero.jump = 1;
-        this.hero.mode = 'walk';
-        this.hero.modeUntil = this.elapsed + 2.5;
-        this.hero.targetX = Phaser.Math.Clamp(x, 80, 900);
-        this.hero.direction = this.hero.targetX >= this.hero.x ? 1 : -1;
-      }
-    });
+    // The cave is an ambient living scene: the explorer acts autonomously.
+    // No mouse interaction is required for walking, resting, or reacting.
     this.scale.on('resize', size => layout(size.width, size.height));
     window.addEventListener('commit-cave-state', event => {
       Object.assign(state, event.detail || {});
@@ -202,8 +191,9 @@
       rect(waterfall.x-5,waterfall.y+waterfall.h/2,5,waterfall.h,0x35b9ff,.9,13);
       rect(waterfall.x+7,waterfall.y+waterfall.h/2,4,waterfall.h,0x8beaff,.9,13);
       for(let i=0;i<9;i++){
-        const p=rect(waterfall.x-7+(i%4)*5,waterfall.y+(i*17)%waterfall.h,3,8,i%2?0x8beaff:0x168fff,.9,14);
-        this.world.water.push(p);
+        const baseY=waterfall.y+(i*17)%waterfall.h;
+        const p=rect(waterfall.x-7+(i%4)*5,baseY,3,8,i%2?0x8beaff:0x168fff,.9,14);
+        this.world.water.push({sprite:p,baseY,phase:i*1.7,fall:waterfall.h});
       }
       rect(waterfall.x,waterfall.y+waterfall.h,45,5,0x168fff,.85,14);
       for(let i=0;i<5;i++) pixel(waterfall.x-17+i*8,waterfall.y+waterfall.h+7,0x63dfff,3,14);
@@ -362,7 +352,7 @@
       b.sprite.y=b.baseY+Math.sin(t*(.65+(i%4)*.13)+b.seed)*11;
       b.sprite.setScale((b.ageDays<3?1.05:b.ageDays<30?.9:.72), (b.ageDays<3?1.05:b.ageDays<30?.9:.72)*(0.72+Math.abs(Math.sin(t*10+b.seed))*.45));
     });
-    this.world.water.forEach((p,i)=>{p.y+=Math.sin(t*4+i)*.06;p.setAlpha(.55+.4*Math.abs(Math.sin(t*3+i)));});
+    this.world.water.forEach((drop,i)=>{const p=drop.sprite;p.y=drop.baseY+((t*42+drop.phase*13)%drop.fall);p.setAlpha(.55+.4*Math.abs(Math.sin(t*5+drop.phase)));});
     this.world.grass.forEach((g,i)=>{g.angle=Math.sin(t*2+i)*8;});
     this.world.foliage.forEach((g,i)=>{g.angle=Math.sin(t*2.3+i)*12;});
     if(this.campfire){
@@ -378,19 +368,45 @@
       f.flameCore.y=f.y+1+(flicker<0?2:0);
       f.flameCore.setAlpha(.7+Math.abs(flicker)*.3);
     });
+    // Autonomous idle/walk/sleep loop, like an animated game scene.
+    if(this.hero.mode==='idle' && t>=this.hero.nextActionAt){
+      const rest=(Math.floor(t/7)+this.hero.restCount)%4===2;
+      if(rest && !this.hero.hungry){
+        this.hero.mode='sleep';
+        this.hero.modeUntil=t+3.5;
+        this.hero.restCount++;
+        this.hero.nextActionAt=t+4.5;
+      } else {
+        const destinations=[215,330,465,610,745,820];
+        this.hero.targetX=destinations[(Math.floor(t*1.3)+this.hero.restCount)%destinations.length];
+        if(Math.abs(this.hero.targetX-this.hero.x)<45)this.hero.targetX=destinations[(Math.floor(t*1.3)+2)%destinations.length];
+        this.hero.direction=this.hero.targetX>=this.hero.x?1:-1;
+        this.hero.mode='walk';
+        this.hero.modeUntil=t+Math.abs(this.hero.targetX-this.hero.x)/58+1.2;
+      }
+    }
     if(this.hero.mode==='walk' && this.hero.targetX!==undefined){
       const distance=this.hero.targetX-this.hero.x;
-      this.hero.x+=Math.sign(distance)*Math.min(Math.abs(distance),delta*.085);
-      if(Math.abs(distance)<2 || t>this.hero.modeUntil){this.hero.mode='idle';this.hero.targetX=undefined;}
+      this.hero.x+=Math.sign(distance)*Math.min(Math.abs(distance),delta*.058);
+      if(Math.abs(distance)<2 || t>this.hero.modeUntil){
+        this.hero.mode='idle';
+        this.hero.targetX=undefined;
+        this.hero.nextActionAt=t+1.1+(Math.abs(Math.sin(t*2))*1.7);
+      }
     }
-    if(this.hero.mode==='idle' && !this.hero.hungry && Math.sin(t*.07)>.998){this.hero.mode='sleep';this.hero.modeUntil=t+4;}
-    if(this.hero.mode==='sleep' && t>this.hero.modeUntil)this.hero.mode='idle';
-    this.heroParts.x=this.hero.x+Math.sin(t*2)*1.5;
-    this.heroParts.y=this.hero.y+(this.hero.hungry?Math.sin(t*4)*2:this.hero.mode==='sleep'?4+Math.sin(t*3)*1.5:Math.sin(t*2)*1);
-    this.heroParts.setAngle(this.hero.mode==='walk'?Math.sin(t*12)*5:this.hero.mode==='sleep'?-5:0);
+    if(this.hero.mode==='sleep' && t>this.hero.modeUntil){
+      this.hero.mode='idle';
+      this.hero.nextActionAt=t+1.5;
+    }
+    this.heroParts.x=this.hero.x+(this.hero.mode==='walk'?Math.sin(t*13)*2:Math.sin(t*2)*1.2);
+    this.heroParts.y=this.hero.y+(this.hero.hungry?Math.sin(t*4)*2:this.hero.mode==='sleep'?5+Math.sin(t*2.5)*2:this.hero.mode==='walk'?Math.abs(Math.sin(t*13))*3:Math.sin(t*2)*1);
+    this.heroParts.setAngle(this.hero.mode==='walk'?Math.sin(t*13)*3:this.hero.mode==='sleep'?-7:0);
+    this.heroParts.setFlipX(this.hero.direction<0);
     if(this.hero.cheer>0){this.hero.cheer-=delta/1000;this.heroParts.y-=Math.abs(Math.sin(t*13))*8;}
     this.heroShadow.x=this.heroParts.x;this.heroAura.x=this.heroParts.x;
     this.heroShadow.y=this.hero.y+47;this.heroAura.y=this.hero.y-58;
+    this.heroShadow.setScale(this.hero.mode==='sleep'?1.25:this.hero.mode==='walk'?.82:1);
+    this.heroAura.setAlpha(this.hero.mode==='sleep'?.08:this.hero.hungry?.65:.2);
     this.world.bonesGroup.angle=Math.sin(t*2)*3;
   }
 })();
