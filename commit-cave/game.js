@@ -29,6 +29,9 @@
     this.load.svg('heroSprite', './assets/hero-explorer.svg');
     this.load.svg('batSprite', './assets/bat.svg');
     this.load.svg('fireSprite', './assets/fire.svg');
+    this.load.on('loaderror', file => {
+      console.error('[Commit Cave] Falha ao carregar asset:', file?.key, file?.src);
+    });
   }
 
   new Phaser.Game({
@@ -265,28 +268,12 @@
   }
 
   function drawHero(){
-    this.heroParts=this.add.image(315,390,'heroSprite').setOrigin(.5,1).setScale(1.65).setDepth(19);
-    // Original chunky sprite: dark skin, textured hair, beard, leather tunic and boots.
-    part(0,22,42,5,0x070914);
-    part(-12,-18,8,26,0x2a202d); part(12,-18,8,26,0x2a202d);
-    part(-12,-6,10,7,0x70412f);part(12,-6,10,7,0x70412f);
-    part(0,-35,27,30,0x4a2c2b);
-    part(0,-43,27,15,0x2a1c28);
-    part(-12,-42,6,9,0x171321);part(-5,-48,7,8,0x171321);part(3,-45,7,7,0x171321);part(10,-41,5,8,0x171321);
-    part(-13,-30,4,12,0x2a1c28);part(13,-30,4,12,0x2a1c28);
-    part(0,-30,23,24,0x9b5b3e);
-    part(-7,-34,4,4,0x090914);part(7,-34,4,4,0x090914);
-    part(0,-27,4,5,0x75412f);
-    part(0,-20,16,8,0x32202a);
-    part(-2,-18,5,3,0x16111a);
-    part(0,-4,30,31,0x86503b);
-    part(-2,-7,34,7,0xb47b48);
-    part(-18,-1,7,24,0x9b5b3e);part(18,-1,7,24,0x9b5b3e);
-    part(-20,18,8,7,0x9b5b3e);part(20,18,8,7,0x9b5b3e);
-    part(-8,25,10,20,0x30212b);part(8,25,10,20,0x30212b);
-    part(-8,43,13,5,0x62402e);part(8,43,13,5,0x62402e);
-    // Belt pouch and a small blue water charm.
-    part(12,7,7,10,0x3a2b35);part(13,8,4,4,0x258cff);
+    // Dedicated pixel-art sprite. Previously an undefined part() call here
+    // threw during scene creation, so Phaser never marked the scene as ready.
+    this.heroParts=this.add.image(315,390,'heroSprite')
+      .setOrigin(.5,1)
+      .setScale(1.65)
+      .setDepth(19);
     this.heroShadow=rect(315,436,44,7,0x03040a,.8,18);
     this.heroAura=rect(315,386,50,2,0xffa74a,.2,18);
   }
