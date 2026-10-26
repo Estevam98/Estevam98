@@ -243,7 +243,7 @@
     const boneColor=0xd9c9b6;
     const bone=rect(0,0,30,3,boneColor,1,17);bone.setAngle(-18);this.world.bonesGroup.add(bone);
     const bone2=rect(0,0,27,3,boneColor,1,17);bone2.setAngle(22);this.world.bonesGroup.add(bone2);
-    [[-15,-4],[-15,4],[15,-4],[15,4],[-12,-3],[-12,3],[12,-3],[12,3]].forEach(([x,y])=>this.world.bonesGroup.add(rect(x,y,5,5,boneColor,1,17)));
+    [[-15,-4],[-15,4],[15,-4],[15,4],[-12,-3],[-12,3],[12,-3],[12,3]].forEach(([x,y])=>this.world.bonesGroup.add(rect(x,y,5,5,boneColor,1,17));
     this.world.bonesGroup.setVisible(false);
     this.world.failureLabel=text(456,420,'TESTE FALHOU',10,'#ff667b',18).setVisible(false);
     this.world.failureMark=text(484,402,'!',20,'#ff354f',18).setVisible(false);
