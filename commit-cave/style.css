@@ -291,15 +291,15 @@ footer{border-top:1px solid #373149;padding-top:18px;display:flex;justify-conten
   image-rendering:pixelated;object-fit:fill;cursor:crosshair;
 }
 /* Hide the former CSS illustration so the new world is not doubled or mis-layered. */
-.cave-frame>.cave-sky,.cave-frame>.cave-back-wall,.cave-frame>.cave-side,
-.cave-frame>.grass-patches,.cave-frame>.cave-glow,.cave-frame>.stalactites,
-.cave-frame>.wall-tools,.cave-frame>.wall-banner,.cave-frame>.depth-layer,
-.cave-frame>#bats,.cave-frame>#waterPool,.cave-frame>.fire-area,
-.cave-frame>#caveman,.cave-frame>.ground,.cave-frame>#fallenBat,
-.cave-frame>.game-hint,.cave-frame>#rewardToast{display:none!important}
-.cave-frame>.cave-label,.cave-frame>.game-hud,.cave-frame>.world-stats,
-.cave-frame>.scene-footer{display:none!important}
-.cave-frame::before{display:none!important}
+.cave-frame.phaser-ready>.cave-sky,.cave-frame.phaser-ready>.cave-back-wall,.cave-frame.phaser-ready>.cave-side,
+.cave-frame.phaser-ready>.grass-patches,.cave-frame.phaser-ready>.cave-glow,.cave-frame.phaser-ready>.stalactites,
+.cave-frame.phaser-ready>.wall-tools,.cave-frame.phaser-ready>.wall-banner,.cave-frame.phaser-ready>.depth-layer,
+.cave-frame.phaser-ready>#bats,.cave-frame.phaser-ready>#waterPool,.cave-frame.phaser-ready>.fire-area,
+.cave-frame.phaser-ready>#caveman,.cave-frame.phaser-ready>.ground,.cave-frame.phaser-ready>#fallenBat,
+.cave-frame.phaser-ready>.game-hint,.cave-frame.phaser-ready>#rewardToast{display:none!important}
+.cave-frame.phaser-ready>.cave-label,.cave-frame.phaser-ready>.game-hud,.cave-frame.phaser-ready>.world-stats,
+.cave-frame.phaser-ready>.scene-footer{display:none!important}
+.cave-frame.phaser-ready::before{display:none!important}
 .cave-frame{height:clamp(380px,53vw,620px)!important;min-height:380px;background:#070914!important;overflow:hidden}
 @media(max-width:680px){.cave-frame{height:430px!important;min-height:430px}}
 
@@ -309,3 +309,24 @@ footer{border-top:1px solid #373149;padding-top:18px;display:flex;justify-conten
 #commitCaveGame{position:absolute!important;inset:0!important;width:100%!important;height:100%!important;z-index:20!important;overflow:hidden!important;pointer-events:auto!important;background:#070914!important}
 #commitCaveGame canvas{position:absolute!important;inset:0!important;width:100%!important;height:100%!important;display:block!important;image-rendering:pixelated!important}
 .cave-frame.phaser-ready{background:#070914!important}
+
+
+/* Graceful fallback: if Phaser CDN is unavailable, preserve the original animated CSS cave. */
+.cave-frame:not(.phaser-ready) #commitCaveGame{display:none!important}
+.cave-frame:not(.phaser-ready)>.cave-sky,
+.cave-frame:not(.phaser-ready)>.cave-back-wall,
+.cave-frame:not(.phaser-ready)>.cave-side,
+.cave-frame:not(.phaser-ready)>.grass-patches,
+.cave-frame:not(.phaser-ready)>.cave-glow,
+.cave-frame:not(.phaser-ready)>.stalactites,
+.cave-frame:not(.phaser-ready)>.wall-tools,
+.cave-frame:not(.phaser-ready)>.wall-banner,
+.cave-frame:not(.phaser-ready)>.depth-layer,
+.cave-frame:not(.phaser-ready)>#bats,
+.cave-frame:not(.phaser-ready)>#waterPool,
+.cave-frame:not(.phaser-ready)>.fire-area,
+.cave-frame:not(.phaser-ready)>#caveman,
+.cave-frame:not(.phaser-ready)>.ground,
+.cave-frame:not(.phaser-ready)>#fallenBat,
+.cave-frame:not(.phaser-ready)>.game-hint,
+.cave-frame:not(.phaser-ready)>#rewardToast{display:block}
