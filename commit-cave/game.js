@@ -31,7 +31,7 @@
     backgroundColor: '#070914',
     antialias: false, pixelArt: true, roundPixels: true,
     render: { pixelArt: true, antialias: false, roundPixels: true, transparent: false },
-    scale: { mode: Phaser.Scale.RESIZE, autoCenter: Phaser.Scale.CENTER_BOTH },
+    scale: { mode: Phaser.Scale.FIT, autoCenter: Phaser.Scale.CENTER_BOTH },
     scene: { create, update }
   });
 
@@ -55,11 +55,8 @@
 
     this.input.on('pointerdown', pointer => {
       const x = pointer.x, y = pointer.y;
-      const hit = this.world.bats.find(b => Phaser.Math.Distance.Between(x, y, b.x, b.y) < 23);
-      if (hit && hit.url) {
-        window.open(hit.url, '_blank', 'noopener,noreferrer');
-        return;
-      }
+      const hit = this.world.bats.some(b => Phaser.Math.Distance.Between(x, y, b.container.x, b.container.y) < 23);
+      if (hit) return;
       if (y > this.scale.height * .42) {
         this.hero.cheer = 1.25;
         this.hero.jump = 1;
