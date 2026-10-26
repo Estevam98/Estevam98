@@ -58,8 +58,8 @@
     drawDecorations.call(this);
     drawHero.call(this);
     drawHud.call(this);
-    this.rebuildBats();
-    this.refreshWorldState();
+    rebuildBats();
+    refreshWorldState();
 
     this.input.on('pointerdown', pointer => {
       const x = pointer.x, y = pointer.y;
@@ -77,8 +77,8 @@
     this.scale.on('resize', size => layout(size.width, size.height));
     window.addEventListener('commit-cave-state', event => {
       Object.assign(state, event.detail || {});
-      this.rebuildBats();
-      this.refreshWorldState();
+      rebuildBats();
+      refreshWorldState();
     });
     layout(this.scale.width, this.scale.height);
     host.classList.add('phaser-ready');
