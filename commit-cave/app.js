@@ -127,7 +127,9 @@ function updateProgression(data, commits, last) {
  const total=Number(data.totalCommits??commits.length), repos=Number(data.repositoriesScanned??0);
  const ci=data.ci||{};
  const success=Number(ci.successfulRuns||0), failed=Number(ci.failedRuns||0), pending=Number(ci.pendingRuns||0);
- window.commitCaveState={successfulRuns:success,failedRuns:failed,pendingRuns:pending,checkedRuns:Number(ci.checkedRuns||0),totalCommits:total,repositories:repos,latestConclusion:ci.latestConclusion||null};
+ const daysSinceCommit=last?ageDays(last.date):7;
+ window.commitCaveCommits=commits;
+ window.commitCaveState={successfulRuns:success,failedRuns:failed,pendingRuns:pending,checkedRuns:Number(ci.checkedRuns||0),totalCommits:total,repositories:repos,latestConclusion:ci.latestConclusion||null,daysSinceCommit};
  window.dispatchEvent(new CustomEvent('commit-cave-state',{detail:window.commitCaveState}));
  const level=Math.max(1,Math.floor(total/25)+1+Math.floor(success/5));
  const xp=((total%25)/25*70)+(success%5)/5*30;
