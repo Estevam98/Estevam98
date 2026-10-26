@@ -273,7 +273,7 @@ footer{border-top:1px solid #373149;padding-top:18px;display:flex;justify-conten
 .game-scene.world-failed:before{content:"";position:absolute;inset:0;z-index:11;pointer-events:none;background:linear-gradient(0deg,#6d08151c,transparent 65%);mix-blend-mode:screen}
 .game-scene.world-blooming .cave-back-wall{filter:saturate(1.25) brightness(1.08)}
 .game-scene.world-blooming .grass-patches{filter:drop-shadow(0 0 4px #40ff6755)}
-@media(prefers-reduced-motion:reduce){#commitCaveGame{display:none}}
+@media(prefers-reduced-motion:reduce){#commitCaveGame canvas{image-rendering:pixelated}}
 
 /* Keep existing clickable commit-bats and hero above the transparent Phaser layer. */
 #commitCaveGame{z-index:6!important}
@@ -302,3 +302,10 @@ footer{border-top:1px solid #373149;padding-top:18px;display:flex;justify-conten
 .cave-frame::before{display:none!important}
 .cave-frame{height:clamp(380px,53vw,620px)!important;min-height:380px;background:#070914!important;overflow:hidden}
 @media(max-width:680px){.cave-frame{height:430px!important;min-height:430px}}
+
+
+/* Runtime fix: the Phaser world must remain visible even when reduced-motion is enabled. */
+.cave-frame{position:relative!important;isolation:isolate}
+#commitCaveGame{position:absolute!important;inset:0!important;width:100%!important;height:100%!important;z-index:20!important;overflow:hidden!important;pointer-events:auto!important;background:#070914!important}
+#commitCaveGame canvas{position:absolute!important;inset:0!important;width:100%!important;height:100%!important;display:block!important;image-rendering:pixelated!important}
+.cave-frame.phaser-ready{background:#070914!important}
