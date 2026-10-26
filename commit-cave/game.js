@@ -224,6 +224,9 @@
   }
 
   function drawDecorations(){
+    // Main campfire uses a dedicated crisp-edged pixel-art asset.
+    this.campfire=this.add.image(603,425,'fireSprite').setDepth(18).setScale(1.12).setOrigin(.5,.85);
+    this.campfireBaseY=425;
     // Torches flicker against the stone; moss grows only with successful tests.
     for(const t of [{x:31,y:291},{x:603,y:320},{x:827,y:290}]){
       rect(t.x,t.y+16,7,25,0x5e3a31,1,12);
@@ -375,6 +378,12 @@
     this.world.water.forEach((p,i)=>{p.y+=Math.sin(t*4+i)*.06;p.setAlpha(.55+.4*Math.abs(Math.sin(t*3+i)));});
     this.world.grass.forEach((g,i)=>{g.angle=Math.sin(t*2+i)*8;});
     this.world.foliage.forEach((g,i)=>{g.angle=Math.sin(t*2.3+i)*12;});
+    if(this.campfire){
+      const firePulse=Math.sin(t*13);
+      this.campfire.y=this.campfireBaseY+(firePulse>0?1:0);
+      this.campfire.setScale(1.12+Math.abs(firePulse)*.06,1.12+(firePulse>0?.07:0));
+      this.campfire.setTint(firePulse>.35?0xffe6c0:0xffffff);
+    }
     this.world.torches.forEach((f,i)=>{
       const flicker=Math.sin(t*14+i*2);
       f.flame.y=f.y-6-(flicker>0?3:0);
