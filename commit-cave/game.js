@@ -44,12 +44,12 @@
     };
     this.elapsed = 0;
     this.hero = { x: 315, y: 390, jump: 0, cheer: 0, hungry: false };
-    this.drawBackdrop();
-    this.drawPlatforms();
-    this.drawWaterfalls();
-    this.drawDecorations();
-    this.drawHero();
-    this.drawHud();
+    drawBackdrop.call(this);
+    drawPlatforms.call(this);
+    drawWaterfalls.call(this);
+    drawDecorations.call(this);
+    drawHero.call(this);
+    drawHud.call(this);
     this.rebuildBats();
     this.refreshWorldState();
 
@@ -139,8 +139,8 @@
       if((x<130||x>820||y<70||y>345) && i%2===0) pixel(x,y,i%3?0x4a4059:0x9b633f,2+(i%3),4);
     }
     // Two hanging banners embedded in the wall.
-    this.drawBanner(670,108,0x8e302d,'TESTES','QUALIDADE','☠');
-    this.drawBanner(832,122,0x1c653d,'EVOLUÇÃO','É PROCESSO','✦');
+    drawBanner.call(this,670,108,0x8e302d,'TESTES','QUALIDADE','☠');
+    drawBanner.call(this,832,122,0x1c653d,'EVOLUÇÃO','É PROCESSO','✦');
     // Tool runes carved into the left wall.
     rect(86,230,126,168,0x080914,.95,8);
     rect(86,230,126,168,0x4a405a,.75,7).setStrokeStyle(2,0x6c5a78);
@@ -196,8 +196,8 @@
       for(let i=0;i<5;i++) pixel(waterfall.x-17+i*8,waterfall.y+waterfall.h+7,0x63dfff,3,14);
     }
     // Collectible blue water vials.
-    this.drawItem(214,432,'water');
-    this.drawItem(829,450,'crystal');
+    drawItem.call(this,214,432,'water');
+    drawItem.call(this,829,450,'crystal');
   }
 
   drawItem(x,y,type){
@@ -220,7 +220,7 @@
       rect(t.x,t.y+3,11,12,0xff6d2d,1,14);
       pixel(t.x,t.y-2,0xffd56a,5,15);
       pixel(t.x+2,t.y+6,0xfff1a1,3,15);
-      this.world.torches.push({x:t.x,y:t.y});
+      this.world.torches.push({x:t.x,y:t.y,flame:rect(t.x,t.y-6,4,5,0xffe18a,1,16)});
     }
     for(let i=0;i<34;i++){
       const x=8+i*29, y=389+(i%3)*5;
