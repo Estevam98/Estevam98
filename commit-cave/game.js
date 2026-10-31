@@ -318,9 +318,9 @@
     const s=gameScene, success=Number(state.successfulRuns)||0, failed=Number(state.failedRuns)||0, pending=Number(state.pendingRuns)||0;
     const total=Number(state.totalCommits)||0, level=Math.max(1,Math.floor(total/25)+1+Math.floor(success/5));
     const days=Number(state.daysSinceCommit)||0;
-    s.hungerFill.width=144*Math.max(.04,Math.min(1,18+Math.max(0,days-1)*20)/100);
-    s.waterFill.width=144*Math.max(.05,Math.min(1,1-Math.min(days,10)*.08));
-    s.evolutionFill.width=144*Math.max(.06,Math.min(1,(12+level*7+Math.min(success,10)*2)/100));
+    s.hungerFill.setDisplaySize(144*Math.max(.04,Math.min(1,(18+Math.max(0,days-1)*20)/100)),4);
+    s.waterFill.setDisplaySize(144*Math.max(.05,Math.min(1,1-Math.min(days,10)*.08)),4);
+    s.evolutionFill.setDisplaySize(144*Math.max(.06,Math.min(1,(12+level*7+Math.min(success,10)*2)/100)),4);
     s.commitText.setText(new Intl.NumberFormat('pt-BR').format(total));
     s.repoText.setText(String(state.repositories||0));
     s.actionsText.setText(pending?'RUN':failed?'FAIL':success?'PASS':'—').setColor(pending?'#ffd66b':failed?'#ff4058':success?'#70f58f':'#b7c3e7');
@@ -389,7 +389,7 @@
         const route=[{x:180,y:355},{x:130,y:430},{x:315,y:390},{x:455,y:365},{x:610,y:400},{x:760,y:390},{x:850,y:440},{x:610,y:400},{x:315,y:390}];
         const destination=route[this.hero.routeIndex%route.length];
         this.hero.targetX=destination.x; this.hero.targetY=destination.y; this.hero.routeIndex++;
-        if(Math.abs(this.hero.targetX-this.hero.x)<45)this.hero.targetX=destinations[(Math.floor(t*1.3)+2)%destinations.length];
+        if(Math.abs(this.hero.targetX-this.hero.x)<45){ const fallback=[180,315,455,610,760,850]; this.hero.targetX=fallback[(Math.floor(t*1.3)+2)%fallback.length]; this.hero.targetY=[355,390,365,400,390,440][(Math.floor(t*1.3)+2)%fallback.length]; }
         this.hero.direction=this.hero.targetX>=this.hero.x?1:-1;
         this.hero.mode='walk';
         this.hero.modeUntil=t+Math.abs(this.hero.targetX-this.hero.x)/58+1.2;
