@@ -53,7 +53,7 @@
       bones: [], crystals: [], torches: [], platforms: [], foliage: []
     };
     this.elapsed = 0;
-    this.hero = { x: 315, y: 390, jump: 0, cheer: 0, hungry: false, mode: 'idle', modeUntil: 0, direction: 1, nextActionAt: 2.5, restCount: 0 };
+    this.hero = { x:315,y:390,groundY:390,jump:0,cheer:0,hungry:false,mode:'idle',modeUntil:0,direction:1,nextActionAt:2.5,restCount:0,routeIndex:0 };
     this.add.image(480,260,'caveBackdrop').setDisplaySize(960,520).setDepth(0);
     drawBackdrop.call(this);
     drawPlatforms.call(this);
@@ -302,11 +302,13 @@
     for(let i=0;i<count;i++){
       const commit=commits[i]||null;
       const ageDays=commit?.date?Math.max(0,(Date.now()-new Date(commit.date).getTime())/86400000):i%40;
-      const sprite=gameScene.add.image(180+(i*71)%590,130+(i*43)%205,'batSprite').setDepth(15).setScale(ageDays<3?1.05:ageDays<30?.9:.72);
-      sprite.setTint(ageDays<3?0xffd66b:ageDays<30?0xff4fcf:0xb59bff);
+      const roosting=ageDays>=30;
+      const sprite=gameScene.add.image(roosting?105+(i*47)%750:180+(i*71)%590,roosting?42+(i%3)*13:130+(i*43)%205,'batSprite').setDepth(15).setScale(roosting?1.05:ageDays<3?1.05:.9);
+      sprite.setTint(ageDays<3?0xffd66b:ageDays<30?0xff4fcf:0x8c83a8);
+      if(roosting) sprite.setAngle(180);
       sprite.setInteractive({useHandCursor:true});
       sprite.on('pointerdown',()=>{if(commit?.url)window.open(commit.url,'_blank','noopener,noreferrer');else if(commit?.repository)window.open('https://github.com/Estevam98/'+commit.repository,'_blank','noopener,noreferrer');});
-      const b={sprite,seed:i*.83,baseY:130+(i*43)%205,baseX:180+(i*71)%590,ageDays,url:commit?.url,repository:commit?.repository};
+      const b={sprite,seed:i*.83,baseY:roosting?42+(i%3)*13:130+(i*43)%205,baseX:roosting?105+(i*47)%750:180+(i*71)%590,ageDays,roosting,url:commit?.url,repository:commit?.repository};
       gameScene.world.bats.push(b);
     }
   }
@@ -348,9 +350,16 @@
     this.elapsed+=delta/1000;
     const t=this.elapsed, h=this.scale.height;
     this.world.bats.forEach((b,i)=>{
-      b.sprite.x=b.baseX+Math.sin(t*.42+b.seed)*22;
-      b.sprite.y=b.baseY+Math.sin(t*(.65+(i%4)*.13)+b.seed)*11;
-      b.sprite.setScale((b.ageDays<3?1.05:b.ageDays<30?.9:.72), (b.ageDays<3?1.05:b.ageDays<30?.9:.72)*(0.72+Math.abs(Math.sin(t*10+b.seed))*.45));
+      if(b.roosting){
+        b.sprite.x=b.baseX+Math.sin(t*.18+b.seed)*2;
+        b.sprite.y=b.baseY+Math.sin(t*1.7+b.seed)*1.5;
+        b.sprite.setAngle(180+Math.sin(t*1.7+b.seed)*3);
+      }else{
+        b.sprite.x=b.baseX+Math.sin(t*.42+b.seed)*52;
+        b.sprite.y=b.baseY+Math.sin(t*(.65+(i%4)*.13)+b.seed)*24;
+        const scale=b.ageDays<3?1.05:.9;
+        b.sprite.setScale(scale,scale*(.65+Math.abs(Math.sin(t*10+b.seed))*.55));
+      }
     });
     this.world.water.forEach((drop,i)=>{const p=drop.sprite;p.y=drop.baseY+((t*42+drop.phase*13)%drop.fall);p.setAlpha(.55+.4*Math.abs(Math.sin(t*5+drop.phase)));});
     this.world.grass.forEach((g,i)=>{g.angle=Math.sin(t*2+i)*8;});
@@ -377,8 +386,9 @@
         this.hero.restCount++;
         this.hero.nextActionAt=t+4.5;
       } else {
-        const destinations=[215,330,465,610,745,820];
-        this.hero.targetX=destinations[(Math.floor(t*1.3)+this.hero.restCount)%destinations.length];
+        const route=[{x:180,y:355},{x:130,y:430},{x:315,y:390},{x:455,y:365},{x:610,y:400},{x:760,y:390},{x:850,y:440},{x:610,y:400},{x:315,y:390}];
+        const destination=route[this.hero.routeIndex%route.length];
+        this.hero.targetX=destination.x; this.hero.targetY=destination.y; this.hero.routeIndex++;
         if(Math.abs(this.hero.targetX-this.hero.x)<45)this.hero.targetX=destinations[(Math.floor(t*1.3)+2)%destinations.length];
         this.hero.direction=this.hero.targetX>=this.hero.x?1:-1;
         this.hero.mode='walk';
@@ -388,6 +398,7 @@
     if(this.hero.mode==='walk' && this.hero.targetX!==undefined){
       const distance=this.hero.targetX-this.hero.x;
       this.hero.x+=Math.sign(distance)*Math.min(Math.abs(distance),delta*.058);
+      this.hero.groundY+=(this.hero.targetY-this.hero.groundY)*Math.min(1,delta*.003);
       if(Math.abs(distance)<2 || t>this.hero.modeUntil){
         this.hero.mode='idle';
         this.hero.targetX=undefined;
@@ -399,12 +410,13 @@
       this.hero.nextActionAt=t+1.5;
     }
     this.heroParts.x=this.hero.x+(this.hero.mode==='walk'?Math.sin(t*13)*2:Math.sin(t*2)*1.2);
-    this.heroParts.y=this.hero.y+(this.hero.hungry?Math.sin(t*4)*2:this.hero.mode==='sleep'?5+Math.sin(t*2.5)*2:this.hero.mode==='walk'?Math.abs(Math.sin(t*13))*3:Math.sin(t*2)*1);
+    this.hero.y=this.hero.groundY;
+    this.heroParts.y=this.hero.groundY+(this.hero.hungry?Math.sin(t*4)*2:this.hero.mode==='sleep'?5+Math.sin(t*2.5)*2:this.hero.mode==='walk'?Math.abs(Math.sin(t*13))*5:Math.sin(t*2)*1);
     this.heroParts.setAngle(this.hero.mode==='walk'?Math.sin(t*13)*3:this.hero.mode==='sleep'?-7:0);
     this.heroParts.setFlipX(this.hero.direction<0);
     if(this.hero.cheer>0){this.hero.cheer-=delta/1000;this.heroParts.y-=Math.abs(Math.sin(t*13))*8;}
     this.heroShadow.x=this.heroParts.x;this.heroAura.x=this.heroParts.x;
-    this.heroShadow.y=this.hero.y+47;this.heroAura.y=this.hero.y-58;
+    this.heroShadow.y=this.hero.groundY+47;this.heroAura.y=this.hero.groundY-58;
     this.heroShadow.setScale(this.hero.mode==='sleep'?1.25:this.hero.mode==='walk'?.82:1);
     this.heroAura.setAlpha(this.hero.mode==='sleep'?.08:this.hero.hungry?.65:.2);
     this.world.bonesGroup.angle=Math.sin(t*2)*3;
