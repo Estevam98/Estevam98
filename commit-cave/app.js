@@ -67,6 +67,76 @@ const front=layer(c=>{
  for(let i=0;i<80;i++){const x=hash(i,901)*480,y=174+hash(i,902)*4;if(x<170||x>350)px(c,x,y,2,4+hash(i,903)*8,'#246c49');}
  for(let i=0;i<60;i++){const x=hash(i,920)*480,y=252+hash(i,921)*10;px(c,x,y,2+hash(i,922)*4,1,hash(i,923)>.5?'#238ac4':'#51d7fa');}
 });
+// Optional high-resolution PNG assets. Missing/invalid files never block the procedural world.
+const pngAssets={far:null,mid:null,front:null,hero:null};
+const assetStatus={far:'loading',mid:'loading',front:'loading',hero:'loading'};
+function loadOptionalPng(key,src,isValid){
+ const image=new Image();
+ image.onload=()=>{
+  if(!isValid(image)){
+   assetStatus[key]='invalid';
+   console.warn('[Commit Cave] Asset PNG inválido; usando fallback procedural:',src);
+   return;
+  }
+  pngAssets[key]=image;
+  assetStatus[key]='ready';
+ };
+ image.onerror=()=>{
+  assetStatus[key]='missing';
+  console.info('[Commit Cave] Asset ausente; fallback procedural ativo:',src);
+ };
+ image.src=src;
+}
+loadOptionalPng('far','./assets/layer-far.png',img=>img.naturalWidth===W&&img.naturalHeight===H);
+loadOptionalPng('mid','./assets/layer-mid.png',img=>img.naturalWidth===W&&img.naturalHeight===H);
+loadOptionalPng('front','./assets/layer-front.png',img=>img.naturalWidth===W&&img.naturalHeight===H);
+// Sprite sheet contract: 4 columns x 6 rows, each frame exactly 48x48 (192x288 total).
+loadOptionalPng('hero','./assets/hero-sheet.png',img=>img.naturalWidth===192&&img.naturalHeight===288);
+
+const HERO_ANIMATIONS={
+ idle:{row:0,frames:4,fps:4},
+ walk:{row:1,frames:4,fps:9},
+ run:{row:2,frames:4,fps:13},
+ celebrate:{row:3,frames:4,fps:8},
+ drink:{row:4,frames:4,fps:6},
+ sleep:{row:5,frames:4,fps:3}
+};
+function drawSceneLayer(key,fallback,offsetX=0){
+ const image=pngAssets[key];
+ if(image){
+  // Wrap the 480px layer horizontally so the parallax never exposes an empty seam.
+  const x=((offsetX%W)+W)%W;
+  ctx.drawImage(image,x-W,0,W,H);
+  ctx.drawImage(image,x,0,W,H);
+  return;
+ }
+ // Per-layer fallback: a missing PNG does not prevent the other PNGs from rendering.
+ ctx.drawImage(fallback,offsetX,0);
+ ctx.drawImage(fallback,offsetX-W,0);
+}
+function drawFrontLayer(){
+ const image=pngAssets.front;
+ if(image)ctx.drawImage(image,0,0,W,H);
+ else ctx.drawImage(front,0,0);
+}
+function drawHeroSprite(){
+ const sheet=pngAssets.hero;
+ if(!sheet){
+  heroPixel(ctx,hero.x,hero.y,hero.mode,hero.dir);
+  return;
+ }
+ const animation=HERO_ANIMATIONS[hero.mode]||HERO_ANIMATIONS.idle;
+ const frame=Math.floor(time*animation.fps)%animation.frames;
+ const sx=frame*48,sy=animation.row*48;
+ ctx.save();
+ ctx.imageSmoothingEnabled=false;
+ ctx.translate(Math.round(hero.x),Math.round(hero.y));
+ if(hero.dir<0)ctx.scale(-1,1);
+ // The sprite's feet align with the same world-space ground anchor as heroPixel().
+ ctx.drawImage(sheet,sx,sy,48,48,-24,-48,48,48);
+ ctx.restore();
+}
+
 let time=0,last=0,randomWake=65;
 const bats=Array.from({length:5},(_,i)=>({x:65+i*84,y:20+(i%2)*7,homeX:65+i*84,homeY:20+(i%2)*7,size:i===1||i===4?1.3:i===2?1.1:.82,age:i%2?70:3,seed:i*1.7,mode:'rest',until:0,vx:0,vy:0,depth:i%3}));
 const fires=[{x:312,y:211,s:1.25}],torches=[{x:46,y:165},{x:355,y:164},{x:436,y:133}];
@@ -170,7 +240,39 @@ function drawTorches(c){
 }
 function drawEmbers(c,dt){for(let i=0;i<embers.length;i++){const p=embers[i];p.x+=p.vx*dt;p.y+=p.vy*dt;p.life-=dt;if(p.life<=0||p.y<100){embers[i]={x:312+rnd(-11,11),y:211,vx:rnd(-9,9),vy:rnd(-29,-8),life:rnd(.5,1.9),size:rnd(1,2)};continue;}c.globalAlpha=clamp(p.life,0,1);px(c,p.x,p.y,p.size,p.size,i%3?'#ffb85a':'#ff6c38');c.globalAlpha=1;}}
 function drawCrystalGlow(c){[[90,204,1],[397,187,.85],[314,126,.65]].forEach(([x,y,s])=>{const a=.5+.5*Math.sin(time*2+x);c.fillStyle='rgba(159,77,255,'+(.06+a*.12)+')';c.fillRect(x-9*s,y-12*s,18*s,25*s);crystal(c,x,y,s);});}
-function render(dt){ctx.imageSmoothingEnabled=false;ctx.fillStyle=C.void;ctx.fillRect(0,0,W,H);const fx=Math.sin(time*.07)*1.4,mx=Math.sin(time*.13);ctx.drawImage(far,fx,0);ctx.drawImage(far,fx-W,0);ctx.drawImage(mid,mx,0);ctx.drawImage(mid,mx-W,0);drawWater(ctx,dt);ctx.drawImage(front,0,0);drawCrystalGlow(ctx);fires.forEach(fire.bind(null,ctx));drawTorches(ctx);drawEmbers(ctx,dt);updateBats(dt);bats.sort((a,b)=>a.depth-b.depth).forEach(b=>drawBat(ctx,b,time));updateHero(dt);ctx.fillStyle='#03050a99';ctx.beginPath();ctx.ellipse(hero.x,hero.y+1,13,2.4,0,0,Math.PI*2);ctx.fill();heroPixel(ctx,hero.x,hero.y,hero.mode,hero.dir);if(hero.mode==='sleep'){ctx.fillStyle='#d8ebff';ctx.font='7px monospace';ctx.fillText('Z',hero.x+10,hero.y-34+Math.sin(time*2)*2);}if(state.failed>0&&Math.floor(time*2)%2===0){px(ctx,389,200,15,2,'#d1c4b5');px(ctx,392,195,10,3,'#eee1cb');px(ctx,388,196,3,4,'#eee1cb');px(ctx,402,196,3,4,'#eee1cb');}}
+function render(dt){
+ ctx.imageSmoothingEnabled=false;
+ ctx.fillStyle=C.void;
+ ctx.fillRect(0,0,W,H);
+ const fx=Math.sin(time*.07)*1.4,mx=Math.sin(time*.13);
+ drawSceneLayer('far',far,fx);
+ drawSceneLayer('mid',mid,mx);
+ drawWater(ctx,dt);
+ drawFrontLayer();
+ drawCrystalGlow(ctx);
+ fires.forEach(fire.bind(null,ctx));
+ drawTorches(ctx);
+ drawEmbers(ctx,dt);
+ updateBats(dt);
+ bats.sort((a,b)=>a.depth-b.depth).forEach(b=>drawBat(ctx,b,time));
+ updateHero(dt);
+ ctx.fillStyle='#03050a99';
+ ctx.beginPath();
+ ctx.ellipse(hero.x,hero.y+1,13,2.4,0,0,Math.PI*2);
+ ctx.fill();
+ drawHeroSprite();
+ if(hero.mode==='sleep'){
+  ctx.fillStyle='#d8ebff';
+  ctx.font='7px monospace';
+  ctx.fillText('Z',hero.x+10,hero.y-34+Math.sin(time*2)*2);
+ }
+ if(state.failed>0&&Math.floor(time*2)%2===0){
+  px(ctx,389,200,15,2,'#d1c4b5');
+  px(ctx,392,195,10,3,'#eee1cb');
+  px(ctx,388,196,3,4,'#eee1cb');
+  px(ctx,402,196,3,4,'#eee1cb');
+ }
+}
 function store(k,v){try{if(v===undefined)return localStorage.getItem(k);localStorage.setItem(k,v);}catch(e){}return null;}
 function updateHUD(d){const commits=Array.isArray(d.commits)?d.commits:[],last=d.lastCommit||commits.reduce((a,b)=>!a||new Date(b.date)>new Date(a.date)?b:a,null),days=last?.date?Math.max(0,Math.floor((Date.now()-new Date(last.date))/DAY)):7,ci=d.ci||{};Object.assign(state,{total:Number(d.totalCommits??commits.length),repos:Number(d.repositoriesScanned||0),passed:Number(ci.successfulRuns||0),failed:Number(ci.failedRuns||0),pending:Number(ci.pendingRuns||0),checked:Number(ci.checkedRuns||0),days});const level=Math.max(1,Math.floor(state.total/25)+1+Math.floor(state.passed/5)),hunger=clamp(100-Math.max(0,days-1)*27,5,100),water=clamp(100-days*10,8,100),evolution=clamp(16+level*8+state.passed*2,8,100);$('hungerBar').style.width=hunger+'%';$('waterBar').style.width=water+'%';$('evolutionBar').style.width=evolution+'%';$('level').textContent='Lv. '+level;$('hudCommits').textContent=new Intl.NumberFormat('pt-BR').format(state.total);$('hudRepos').textContent=state.repos;$('hudActivity').textContent=last?days===0?'Hoje':days+'d':'—';$('hudActions').textContent=state.pending?'RUN':state.failed?'FAIL':state.passed?'PASS':'—';$('totalCommits').textContent=new Intl.NumberFormat('pt-BR').format(state.total);$('lastCommit').textContent=last?(days===0?'hoje':days===1?'há 1 dia':'há '+days+' dias'):'Ainda não';$('lastCommitDate').textContent=last?new Intl.DateTimeFormat('pt-BR',{dateStyle:'medium'}).format(new Date(last.date))+(last.repository?' · '+last.repository:''):'esperando atividade';$('hungerLabel').textContent=days>=7?'Faminto':days>=3?'Com fome':'Satisfeito';$('hungerDetail').textContent=days+' dia(s) desde o último commit';$('ciSummary').textContent=state.passed+' aprovadas · '+state.failed+' falhas · '+state.pending+' em andamento';$('ciLight').style.background=state.failed?'#ff4b64':state.pending?'#ffd16e':'#52ef91';$('testBar').style.width=(state.checked?state.passed/state.checked*100:0)+'%';$('testCount').textContent=state.checked?state.passed+'/'+state.checked+' workflows aprovados':'sem execuções classificadas';$('waterEvent').textContent=days===0?'+1 Água':'Água '+water+'%';$('waterDetail').textContent=days===0?'commit recente renova a jornada':'atividade recente mantém a fonte viva';$('qualityEvent').textContent=state.failed?'Build com falha':state.passed?'+1 Evolução':'Qualidade em construção';$('qualityDetail').textContent=state.failed?'marcas vermelhas no chão':state.passed+' workflows concluídos com sucesso';$('updateStatus').textContent='Dados coletados em '+new Intl.DateTimeFormat('pt-BR',{dateStyle:'medium',timeStyle:'short'}).format(new Date(d.generatedAt||Date.now()))+' · '+state.repos+' repositórios públicos analisados.';const sha=last?.sha||'',runAt=ci.latestRunAt||'',oldSha=store('cc-sha'),oldRun=store('cc-run'),initial=oldSha===null&&oldRun===null;if(!initial&&sha&&oldSha&&sha!==oldSha){state.celebrate=time+5;state.boost=performance.now()+5500;$('waterEvent').textContent='+1 Água';$('waterDetail').textContent='novo commit detectado · explorador celebra';const b=bats.find(v=>v.mode==='rest');if(b)wakeBat(b,time);}if(!initial&&runAt&&oldRun&&runAt!==oldRun&&ci.latestConclusion==='success'){state.celebrate=time+5;state.boost=performance.now()+6000;$('qualityEvent').textContent='+1 Evolução';$('qualityDetail').textContent='execução verde detectada · caverna floresce';const b=bats.find(v=>v.mode==='rest');if(b)wakeBat(b,time);}if(oldSha===null)store('cc-sha',sha);else if(sha)store('cc-sha',sha);if(oldRun===null)store('cc-run',runAt);else if(runAt)store('cc-run',runAt);if(state.failed>0&&Math.random()<.15){const b=bats.find(v=>v.mode==='rest');if(b)wakeBat(b,time);}}
 async function refresh(){try{const r=await fetch('./data/commits.json?ts='+Date.now(),{cache:'no-store'});if(!r.ok)throw new Error('HTTP '+r.status);updateHUD(await r.json());}catch(e){$('updateStatus').textContent='Dados do GitHub indisponíveis; a caverna procedural continua ativa.';$('ciSummary').textContent='Resultados de CI indisponíveis.';console.warn('[Commit Cave]',e.message);}}
