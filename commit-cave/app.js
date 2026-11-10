@@ -2,6 +2,7 @@
 (()=>{
 'use strict';
 const W=480,H=270,$=id=>document.getElementById(id),clamp=(v,a,b)=>Math.max(a,Math.min(b,v)),rnd=(a,b)=>a+Math.random()*(b-a),DAY=86400000;
+const lerp=(from,to,progress)=>from+(to-from)*progress;
 const canvas=$('worldCanvas'),ctx=canvas&&canvas.getContext('2d',{alpha:false});if(!ctx)return;
 canvas.width=W;canvas.height=H;ctx.imageSmoothingEnabled=false;
 const C={void:'#060916',rock:'#171a2c',rock2:'#292b40',rock3:'#423a50',edge:'#79616a',moss:'#226747',moss2:'#48a56a',blue:'#167ab8',cyan:'#65dcff',violet:'#984bd3',pink:'#ee65d2',fire:'#ff702d',gold:'#ffd078',skin:'#a96845',leather:'#80503a'};
