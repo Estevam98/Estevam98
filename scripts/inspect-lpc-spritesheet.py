@@ -69,11 +69,14 @@ detail.save("lpc-all-frames-rows-0-53.png")
 report={"file":str(path),"dimensions":[W,H],"frame_size":[64,64],"columns":cols,"rows":rows,"minimum_opaque":150,"row_analysis":row_data}
 # Inspect backgrounds uploaded by the user so the canvas layout can match the supplied art.
 backgrounds={}
-for name in ("layer-far.png","layer-mid.png","layer-front.png"):
+for name in ("layer-far.png","layer-mid.png","layer-front.png","layer-mid.png.png","layer-front.png.png"):
     fp=Path("commit-cave/assets")/name
     if fp.exists():
         bg=Image.open(fp).convert("RGBA")
-        backgrounds[name]={"dimensions":list(bg.size),"bbox_alpha":list(bg.getchannel("A").getbbox() or [])}
+        alpha=bg.getchannel("A")
+        backgrounds[name]={"dimensions":list(bg.size),"bbox_alpha":list(alpha.getbbox() or []),"opaque_pixels":sum(1 for a in alpha.getdata() if a>128)}
+        bg.thumbnail((960,540),Image.Resampling.NEAREST)
+        bg.save("preview-"+name.replace(".png","").replace(".","-")+".png")
     else:
         backgrounds[name]={"missing":True}
 report["background_assets"]=backgrounds
