@@ -27,5 +27,5 @@ jobs:
           name: lpc-sprite-audit
           path: |
             lpc-audit.json
-            lpc-contact-sheet.png
+            lpc-contact-sheet.png\n            lpc-all-frames-rows-0-53.png
           if-no-files-found: error

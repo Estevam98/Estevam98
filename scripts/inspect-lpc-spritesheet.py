@@ -44,6 +44,39 @@ for r,info in enumerate(row_data):
         draw.text((slot*cell_w+2,r*cell_h+65),f"r{r:02} c{col:02} {info['counts'][col]}",fill=(235,240,255,255))
 # left half is frame zero in each row; right half shows row's most visible frame.
 preview.save("lpc-contact-sheet.png")
+
+# Detailed contact sheet for character animation identification: every non-empty frame
+# in rows 0..53, columns 0..8, shown at 2x nearest-neighbor scale.
+detail_rows=54
+detail_cols=9
+thumb=48
+label=16
+detail=Image.new("RGBA",(detail_cols*thumb*2,detail_rows*(thumb*2+label)),(8,12,24,255))
+dd=ImageDraw.Draw(detail)
+for row in range(detail_rows):
+    for col in range(detail_cols):
+        x0,y0=col*FRAME,row*FRAME
+        crop=im.crop((x0,y0,x0+FRAME,y0+FRAME))
+        crop=crop.resize((thumb*2,thumb*2),Image.Resampling.NEAREST)
+        dx=col*thumb*2
+        dy=row*(thumb*2+label)
+        detail.alpha_composite(crop,(dx,dy))
+        if frame_stats(row,col)["opaque"]>=150:
+            dd.rectangle((dx,dy+thumb*2,dx+thumb*2-1,dy+thumb*2+label-1),fill=(18,25,43,255))
+            dd.text((dx+2,dy+thumb*2+2),f"r{row:02} c{col:02}",fill=(230,238,255,255))
+detail.save("lpc-all-frames-rows-0-53.png")
+
+# Inspect backgrounds uploaded by the user so the canvas layout can match the supplied art.
+backgrounds={}
+for name in ("layer-far.png","layer-mid.png","layer-front.png"):
+    fp=Path("commit-cave/assets")/name
+    if fp.exists():
+        bg=Image.open(fp).convert("RGBA")
+        backgrounds[name]={"dimensions":list(bg.size),"bbox_alpha":list(bg.getchannel("A").getbbox() or [])}
+    else:
+        backgrounds[name]={"missing":True}
+report["background_assets"]=backgrounds
+Path("lpc-audit.json").write_text(json.dumps(report,indent=2),encoding="utf-8")
 report={"file":str(path),"dimensions":[W,H],"frame_size":[64,64],"columns":cols,"rows":rows,"minimum_opaque":150,"row_analysis":row_data}
 Path("lpc-audit.json").write_text(json.dumps(report,indent=2),encoding="utf-8")
 print(f"LPC_AUDIT_DIMENSIONS {W}x{H} GRID {cols}x{rows}")
