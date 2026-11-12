@@ -72,31 +72,57 @@ const front=layer(c=>{
 const pngAssets={far:null,mid:null,front:null,hero:null};
 const assetStatus={far:'loading',mid:'loading',front:'loading',hero:'loading'};
 const LPC_FRAME_SIZE=64;
-let heroRowVisibility=null;
+const LPC_MIN_OPAQUE_PIXELS=150;
+let heroRowVisibility=new Map();
+let heroFirstValidRow=-1;
 
+// Scan every LPC row. A row is usable only when its first 64x64 frame
+// contains at least 150 pixels whose alpha channel is greater than 128.
 function inspectLpcRows(image){
- const rowsToInspect=[3,7,11,20,25];
+ const visibility=new Map();
+ const totalRows=Math.floor(image.naturalHeight/LPC_FRAME_SIZE);
  const probeCanvas=document.createElement('canvas');
- probeCanvas.width=image.naturalWidth;
+ probeCanvas.width=LPC_FRAME_SIZE;
  probeCanvas.height=LPC_FRAME_SIZE;
  const probe=probeCanvas.getContext('2d',{willReadFrequently:true});
- if(!probe)return null;
- const visibility=new Map();
+ if(!probe){
+  console.warn('[Commit Cave] Canvas de inspeção indisponível; usando heroPixel().');
+  return {visibility,firstValidRow:-1};
+ }
+
+ let firstValidRow=-1;
  try{
-  for(const row of rowsToInspect){
+  for(let row=0;row<totalRows;row++){
    const sourceY=row*LPC_FRAME_SIZE;
-   if(sourceY+LPC_FRAME_SIZE>image.naturalHeight){visibility.set(row,false);continue;}
-   probe.clearRect(0,0,probeCanvas.width,probeCanvas.height);
-   probe.drawImage(image,0,sourceY,image.naturalWidth,LPC_FRAME_SIZE,0,0,probeCanvas.width,LPC_FRAME_SIZE);
-   const pixels=probe.getImageData(0,0,probeCanvas.width,LPC_FRAME_SIZE).data;
-   let visible=false;
-   for(let i=3;i<pixels.length;i+=4){if(pixels[i]>0){visible=true;break;}}
-   visibility.set(row,visible);
+   if(sourceY+LPC_FRAME_SIZE>image.naturalHeight){
+    visibility.set(row,false);
+    continue;
+   }
+
+   probe.clearRect(0,0,LPC_FRAME_SIZE,LPC_FRAME_SIZE);
+   probe.drawImage(
+    image,
+    0,sourceY,LPC_FRAME_SIZE,LPC_FRAME_SIZE,
+    0,0,LPC_FRAME_SIZE,LPC_FRAME_SIZE
+   );
+
+   const pixels=probe.getImageData(0,0,LPC_FRAME_SIZE,LPC_FRAME_SIZE).data;
+   let opaquePixels=0;
+   for(let i=3;i<pixels.length;i+=4){
+    if(pixels[i]>128){
+     opaquePixels++;
+     if(opaquePixels>=LPC_MIN_OPAQUE_PIXELS)break;
+    }
+   }
+
+   const valid=opaquePixels>=LPC_MIN_OPAQUE_PIXELS;
+   visibility.set(row,valid);
+   if(valid&&firstValidRow===-1)firstValidRow=row;
   }
-  return visibility;
+  return {visibility,firstValidRow};
  }catch(error){
-  console.warn('[Commit Cave] Não foi possível inspecionar transparência da spritesheet LPC; usando validação dimensional.',error);
-  return null;
+  console.warn('[Commit Cave] Falha ao inspecionar pixels LPC; usando heroPixel().',error);
+  return {visibility:new Map(),firstValidRow:-1};
  }
 }
 
@@ -110,7 +136,14 @@ function loadOptionalPng(key,src,isValid){
   }
   pngAssets[key]=image;
   assetStatus[key]='ready';
-  if(key==='hero')heroRowVisibility=inspectLpcRows(image);
+  if(key==='hero'){
+   const scan=inspectLpcRows(image);
+   heroRowVisibility=scan.visibility;
+   heroFirstValidRow=scan.firstValidRow;
+   if(heroFirstValidRow===-1){
+    console.warn('[Commit Cave] Nenhuma linha LPC possui 150 pixels opacos. heroPixel() continuará ativo.');
+   }
+  }
  };
  image.onerror=()=>{
   assetStatus[key]='missing';
@@ -121,27 +154,34 @@ function loadOptionalPng(key,src,isValid){
 loadOptionalPng('far','./assets/layer-far.png',img=>img.naturalWidth===W&&img.naturalHeight===H);
 loadOptionalPng('mid','./assets/layer-mid.png',img=>img.naturalWidth===W&&img.naturalHeight===H);
 loadOptionalPng('front','./assets/layer-front.png',img=>img.naturalWidth===W&&img.naturalHeight===H);
-// Universal LPC uses 64x64 frames; extended sheets are supported as long as both dimensions align to the frame grid.
+// Universal LPC sheets use 64x64 frames and dimensions aligned to the frame grid.
 loadOptionalPng('hero','./assets/hero-sheet.png',img=>
  img.naturalWidth>=LPC_FRAME_SIZE&&img.naturalHeight>=LPC_FRAME_SIZE&&
  img.naturalWidth%LPC_FRAME_SIZE===0&&img.naturalHeight%LPC_FRAME_SIZE===0
 );
 
-const HERO_ANIMATIONS={
- idle:{row:25,fallbackRow:11,frames:4,fallbackFrames:1,fps:4},
- walk:{row:11,fallbackRow:11,frames:9,fallbackFrames:1,fps:9},
- run:{row:11,fallbackRow:11,frames:9,fallbackFrames:1,fps:14},
- celebrate:{row:3,fallbackRow:11,frames:7,fallbackFrames:1,fps:8},
- drink:{row:7,fallbackRow:11,frames:8,fallbackFrames:1,fps:6},
- sleep:{row:20,fallbackRow:11,frames:6,fallbackFrames:1,fps:3}
-};
-
 function isLpcRowUsable(sheet,row){
  if(!Number.isInteger(row)||row<0)return false;
  if((row+1)*LPC_FRAME_SIZE>sheet.naturalHeight)return false;
- const inspected=heroRowVisibility&&heroRowVisibility.get(row);
- return inspected===undefined?true:inspected;
+ return heroRowVisibility.get(row)===true;
 }
+
+// Universal LPC row groups, all indexed from zero and facing right on the final row.
+const LPC_ROWS={
+ spellcast:{up:0,left:1,down:2,right:3},
+ thrust:{up:4,left:5,down:6,right:7},
+ walk:{up:8,left:9,down:10,right:11},
+ slash:{up:12,left:13,down:14,right:15},
+ hurt:{row:20}
+};
+const HERO_ANIMATIONS={
+ idle:{row:LPC_ROWS.walk.right,frames:1,fps:1},
+ walk:{row:LPC_ROWS.walk.right,frames:9,fps:9},
+ run:{row:LPC_ROWS.walk.right,frames:9,fps:14},
+ celebrate:{row:LPC_ROWS.spellcast.right,frames:7,fps:8},
+ drink:{row:LPC_ROWS.thrust.right,frames:8,fps:6},
+ sleep:{row:LPC_ROWS.hurt.row,frames:6,fps:3}
+};
 function drawSceneLayer(key,fallback,offsetX=0){
  const image=pngAssets[key];
  if(image){
@@ -162,35 +202,33 @@ function drawFrontLayer(){
 }
 function drawHeroSprite(){
  const sheet=pngAssets.hero;
- if(!sheet){
+ if(!sheet||heroFirstValidRow===-1){
   heroPixel(ctx,hero.x,hero.y,hero.mode,hero.dir);
   return;
  }
 
  const animation=HERO_ANIMATIONS[hero.mode]||HERO_ANIMATIONS.idle;
- const columns=Math.floor(sheet.naturalWidth/LPC_FRAME_SIZE);
  let row=animation.row;
  let frameCount=animation.frames;
 
+ // If the configured LPC row is sparse/empty, scan result provides the first
+ // complete character row across the entire sheet (not just known animation rows).
  if(!isLpcRowUsable(sheet,row)){
-  // Idle prefers row 25; a shortened LPC sheet falls back to the first Walk Right frame on row 11.
-  row=isLpcRowUsable(sheet,animation.fallbackRow)
-   ?animation.fallbackRow
-   :(isLpcRowUsable(sheet,0)?0:-1);
-  frameCount=animation.fallbackFrames||1;
+  row=heroFirstValidRow;
+  frameCount=1;
  }
-
- if(row<0||columns<1){
+ if(row<0||!isLpcRowUsable(sheet,row)){
   heroPixel(ctx,hero.x,hero.y,hero.mode,hero.dir);
   return;
  }
 
+ const columns=Math.floor(sheet.naturalWidth/LPC_FRAME_SIZE);
  frameCount=Math.max(1,Math.min(frameCount,columns));
  const frame=Math.floor(time*animation.fps)%frameCount;
  const sx=frame*LPC_FRAME_SIZE;
  const sy=row*LPC_FRAME_SIZE;
 
- // Final source-rectangle guard: never read outside the actual image bounds.
+ // Guard both axes before drawing so an absent/partial frame never becomes invisible.
  if(sx+LPC_FRAME_SIZE>sheet.naturalWidth||sy+LPC_FRAME_SIZE>sheet.naturalHeight){
   heroPixel(ctx,hero.x,hero.y,hero.mode,hero.dir);
   return;
@@ -200,7 +238,6 @@ function drawHeroSprite(){
  ctx.imageSmoothingEnabled=false;
  ctx.translate(Math.round(hero.x),Math.round(hero.y));
  if(hero.dir===-1)ctx.scale(-1,1);
- // Native 64x64 destination; bottom-center stays anchored to the explorer's world position.
  ctx.drawImage(
   sheet,
   sx,sy,LPC_FRAME_SIZE,LPC_FRAME_SIZE,
