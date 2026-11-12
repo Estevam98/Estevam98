@@ -69,60 +69,81 @@ const front=layer(c=>{
  for(let i=0;i<60;i++){const x=hash(i,920)*480,y=252+hash(i,921)*10;px(c,x,y,2+hash(i,922)*4,1,hash(i,923)>.5?'#238ac4':'#51d7fa');}
 });
 // Optional high-resolution PNG assets. Missing/invalid files never block the procedural world.
+// Optional scene layers + verified Universal LPC spritesheet (64x64 frames).
 const pngAssets={far:null,mid:null,front:null,hero:null};
 const assetStatus={far:'loading',mid:'loading',front:'loading',hero:'loading'};
 const LPC_FRAME_SIZE=64;
 const LPC_MIN_OPAQUE_PIXELS=150;
 let heroRowVisibility=new Map();
+let heroRowFrameCounts=new Map();
 let heroFirstValidRow=-1;
 
-// Scan every LPC row. A row is usable only when its first 64x64 frame
-// contains at least 150 pixels whose alpha channel is greater than 128.
+function countVisiblePixels(image,minimum=1){
+ const probeCanvas=document.createElement('canvas');
+ probeCanvas.width=image.naturalWidth;
+ probeCanvas.height=image.naturalHeight;
+ const probe=probeCanvas.getContext('2d',{willReadFrequently:true});
+ if(!probe)return false;
+ try{
+  probe.clearRect(0,0,probeCanvas.width,probeCanvas.height);
+  probe.drawImage(image,0,0);
+  const pixels=probe.getImageData(0,0,probeCanvas.width,probeCanvas.height).data;
+  let count=0;
+  for(let i=3;i<pixels.length;i+=4){
+   if(pixels[i]>16&&++count>=minimum)return true;
+  }
+  return false;
+ }catch(error){
+  console.warn('[Commit Cave] Não foi possível validar a transparência do PNG.',error);
+  return false;
+ }
+}
+
 function inspectLpcRows(image){
  const visibility=new Map();
+ const frameCounts=new Map();
  const totalRows=Math.floor(image.naturalHeight/LPC_FRAME_SIZE);
+ const columns=Math.floor(image.naturalWidth/LPC_FRAME_SIZE);
  const probeCanvas=document.createElement('canvas');
- probeCanvas.width=LPC_FRAME_SIZE;
- probeCanvas.height=LPC_FRAME_SIZE;
+ probeCanvas.width=image.naturalWidth;
+ probeCanvas.height=image.naturalHeight;
  const probe=probeCanvas.getContext('2d',{willReadFrequently:true});
- if(!probe){
-  console.warn('[Commit Cave] Canvas de inspeção indisponível; usando heroPixel().');
-  return {visibility,firstValidRow:-1};
- }
+ if(!probe)return {visibility,frameCounts,firstValidRow:-1};
 
- let firstValidRow=-1;
  try{
+  probe.drawImage(image,0,0);
+  const pixels=probe.getImageData(0,0,image.naturalWidth,image.naturalHeight).data;
+  let firstValidRow=-1;
+
   for(let row=0;row<totalRows;row++){
-   const sourceY=row*LPC_FRAME_SIZE;
-   if(sourceY+LPC_FRAME_SIZE>image.naturalHeight){
-    visibility.set(row,false);
-    continue;
-   }
-
-   probe.clearRect(0,0,LPC_FRAME_SIZE,LPC_FRAME_SIZE);
-   probe.drawImage(
-    image,
-    0,sourceY,LPC_FRAME_SIZE,LPC_FRAME_SIZE,
-    0,0,LPC_FRAME_SIZE,LPC_FRAME_SIZE
-   );
-
-   const pixels=probe.getImageData(0,0,LPC_FRAME_SIZE,LPC_FRAME_SIZE).data;
-   let opaquePixels=0;
-   for(let i=3;i<pixels.length;i+=4){
-    if(pixels[i]>128){
-     opaquePixels++;
-     if(opaquePixels>=LPC_MIN_OPAQUE_PIXELS)break;
+   const counts=[];
+   for(let col=0;col<columns;col++){
+    let opaque=0;
+    const startX=col*LPC_FRAME_SIZE;
+    const startY=row*LPC_FRAME_SIZE;
+    for(let y=0;y<LPC_FRAME_SIZE;y++){
+     let index=((startY+y)*image.naturalWidth+startX)*4+3;
+     for(let x=0;x<LPC_FRAME_SIZE;x++,index+=4){
+      if(pixels[index]>128)opaque++;
+     }
     }
+    counts.push(opaque);
    }
 
-   const valid=opaquePixels>=LPC_MIN_OPAQUE_PIXELS;
-   visibility.set(row,valid);
-   if(valid&&firstValidRow===-1)firstValidRow=row;
+   const rowValid=(counts[0]||0)>=LPC_MIN_OPAQUE_PIXELS;
+   visibility.set(row,rowValid);
+   let contiguous=0;
+   for(const count of counts){
+    if(count<LPC_MIN_OPAQUE_PIXELS)break;
+    contiguous++;
+   }
+   frameCounts.set(row,contiguous);
+   if(rowValid&&firstValidRow===-1)firstValidRow=row;
   }
-  return {visibility,firstValidRow};
+  return {visibility,frameCounts,firstValidRow};
  }catch(error){
-  console.warn('[Commit Cave] Falha ao inspecionar pixels LPC; usando heroPixel().',error);
-  return {visibility:new Map(),firstValidRow:-1};
+  console.warn('[Commit Cave] Falha ao inspecionar a spritesheet LPC; usando heroPixel().',error);
+  return {visibility:new Map(),frameCounts:new Map(),firstValidRow:-1};
  }
 }
 
@@ -131,7 +152,7 @@ function loadOptionalPng(key,src,isValid){
  image.onload=()=>{
   if(!isValid(image)){
    assetStatus[key]='invalid';
-   console.warn('[Commit Cave] Asset PNG inválido; usando fallback procedural:',src);
+   console.warn('[Commit Cave] PNG vazio/inválido; fallback ativo:',src);
    return;
   }
   pngAssets[key]=image;
@@ -139,98 +160,124 @@ function loadOptionalPng(key,src,isValid){
   if(key==='hero'){
    const scan=inspectLpcRows(image);
    heroRowVisibility=scan.visibility;
+   heroRowFrameCounts=scan.frameCounts;
    heroFirstValidRow=scan.firstValidRow;
-   if(heroFirstValidRow===-1){
-    console.warn('[Commit Cave] Nenhuma linha LPC possui 150 pixels opacos. heroPixel() continuará ativo.');
+   if(heroFirstValidRow<0){
+    console.warn('[Commit Cave] Nenhuma linha LPC tem 150 pixels opacos. heroPixel() será utilizado.');
    }
   }
  };
  image.onerror=()=>{
   assetStatus[key]='missing';
-  console.info('[Commit Cave] Asset ausente; fallback procedural ativo:',src);
+  console.info('[Commit Cave] Asset ausente; mantendo fallback procedural:',src);
  };
  image.src=src;
 }
-loadOptionalPng('far','./assets/layer-far.png',img=>img.naturalWidth===W&&img.naturalHeight===H);
-loadOptionalPng('mid','./assets/layer-mid.png',img=>img.naturalWidth===W&&img.naturalHeight===H);
-loadOptionalPng('front','./assets/layer-front.png',img=>img.naturalWidth===W&&img.naturalHeight===H);
-// Universal LPC sheets use 64x64 frames and dimensions aligned to the frame grid.
+
+const validSceneLayer=img=>img.naturalWidth===W&&img.naturalHeight===H&&countVisiblePixels(img,32);
+loadOptionalPng('far','./assets/layer-far.png',img=>img.naturalWidth===W&&img.naturalHeight===H&&countVisiblePixels(img,150));
+loadOptionalPng('mid','./assets/layer-mid.png',validSceneLayer);
+loadOptionalPng('front','./assets/layer-front.png',validSceneLayer);
 loadOptionalPng('hero','./assets/hero-sheet.png',img=>
  img.naturalWidth>=LPC_FRAME_SIZE&&img.naturalHeight>=LPC_FRAME_SIZE&&
  img.naturalWidth%LPC_FRAME_SIZE===0&&img.naturalHeight%LPC_FRAME_SIZE===0
 );
 
 function isLpcRowUsable(sheet,row){
- if(!Number.isInteger(row)||row<0)return false;
- if((row+1)*LPC_FRAME_SIZE>sheet.naturalHeight)return false;
- return heroRowVisibility.get(row)===true;
+ return Number.isInteger(row)&&row>=0&&
+  (row+1)*LPC_FRAME_SIZE<=sheet.naturalHeight&&
+  heroRowVisibility.get(row)===true;
+}
+function getLpcFrameCount(sheet,row,requested){
+ if(!isLpcRowUsable(sheet,row))return 0;
+ return Math.max(0,Math.min(requested,heroRowFrameCounts.get(row)||0));
 }
 
-// Universal LPC row groups, all indexed from zero and facing right on the final row.
+// Standard LPC row blocks; each directional group is ordered up, left, down, right.
 const LPC_ROWS={
  spellcast:{up:0,left:1,down:2,right:3},
  thrust:{up:4,left:5,down:6,right:7},
  walk:{up:8,left:9,down:10,right:11},
  slash:{up:12,left:13,down:14,right:15},
- hurt:{row:20}
+ shoot:{up:16,left:17,down:18,right:19},
+ hurt:{row:20},
+ climb:{row:21},
+ idle:{up:22,left:23,down:24,right:25},
+ jump:{up:26,left:27,down:28,right:29},
+ sit:{up:30,left:31,down:32,right:33},
+ emote:{up:34,left:35,down:36,right:37},
+ run:{up:38,left:39,down:40,right:41},
+ combatIdle:{up:42,left:43,down:44,right:45},
+ backslash:{up:46,left:47,down:48,right:49},
+ halfslash:{up:50,left:51,down:52,right:53}
 };
 const HERO_ANIMATIONS={
- idle:{row:LPC_ROWS.walk.right,frames:1,fps:1},
- walk:{row:LPC_ROWS.walk.right,frames:9,fps:9},
- run:{row:LPC_ROWS.walk.right,frames:9,fps:14},
- celebrate:{row:LPC_ROWS.spellcast.right,frames:7,fps:8},
- drink:{row:LPC_ROWS.thrust.right,frames:8,fps:6},
- sleep:{row:LPC_ROWS.hurt.row,frames:6,fps:3}
+ idle:{row:LPC_ROWS.idle.right,frames:2,fps:2,loop:true},
+ walk:{row:LPC_ROWS.walk.right,frames:9,fps:9,loop:true},
+ run:{row:LPC_ROWS.run.right,frames:8,fps:13,loop:true},
+ jump:{row:LPC_ROWS.jump.right,frames:5,fps:9,loop:false},
+ climb:{row:LPC_ROWS.climb.row,frames:6,fps:8,loop:true},
+ slash:{row:LPC_ROWS.slash.right,frames:6,fps:11,loop:true},
+ attack:{row:LPC_ROWS.slash.right,frames:6,fps:11,loop:true},
+ celebrate:{row:LPC_ROWS.spellcast.right,frames:7,fps:8,loop:true},
+ drink:{row:LPC_ROWS.thrust.right,frames:8,fps:6,loop:true},
+ sleep:{row:LPC_ROWS.hurt.row,frames:6,fps:3,loop:true}
 };
+
 function drawSceneLayer(key,fallback,offsetX=0){
  const image=pngAssets[key];
  if(image){
-  // Wrap the 480px layer horizontally so the parallax never exposes an empty seam.
-  const x=((offsetX%W)+W)%W;
-  ctx.drawImage(image,x-W,0,W,H);
-  ctx.drawImage(image,x,0,W,H);
+  ctx.drawImage(image,0,0,W,H);
   return;
  }
- // Per-layer fallback: a missing PNG does not prevent the other PNGs from rendering.
- ctx.drawImage(fallback,offsetX,0);
- ctx.drawImage(fallback,offsetX-W,0);
+ if(key==='far'||!pngAssets.far){
+  ctx.drawImage(fallback,0,0,W,H);
+ }
 }
 function drawFrontLayer(){
- const image=pngAssets.front;
- if(image)ctx.drawImage(image,0,0,W,H);
- else ctx.drawImage(front,0,0);
+ if(pngAssets.front){
+  ctx.drawImage(pngAssets.front,0,0,W,H);
+ }else if(!pngAssets.far){
+  ctx.drawImage(front,0,0,W,H);
+ }
 }
 function drawHeroSprite(){
  const sheet=pngAssets.hero;
- if(!sheet||heroFirstValidRow===-1){
-  heroPixel(ctx,hero.x,hero.y,hero.mode,hero.dir);
+ const mode=hero.displayMode||(hero.eventMode&&time<hero.eventUntil?hero.eventMode:hero.mode);
+ if(!sheet||heroFirstValidRow<0){
+  heroPixel(ctx,hero.x,hero.y,mode,hero.dir);
   return;
  }
 
- const animation=HERO_ANIMATIONS[hero.mode]||HERO_ANIMATIONS.idle;
+ const animation=HERO_ANIMATIONS[mode]||HERO_ANIMATIONS.idle;
  let row=animation.row;
- let frameCount=animation.frames;
+ let frameCount=getLpcFrameCount(sheet,row,animation.frames);
 
- // If the configured LPC row is sparse/empty, scan result provides the first
- // complete character row across the entire sheet (not just known animation rows).
- if(!isLpcRowUsable(sheet,row)){
-  row=heroFirstValidRow;
-  frameCount=1;
+ if(frameCount<1){
+  // Prefer the verified Walk Right row before using an arbitrary scanned row.
+  if(getLpcFrameCount(sheet,LPC_ROWS.walk.right,1)>0){
+   row=LPC_ROWS.walk.right;
+   frameCount=1;
+  }else{
+   row=heroFirstValidRow;
+   frameCount=getLpcFrameCount(sheet,row,1);
+  }
  }
- if(row<0||!isLpcRowUsable(sheet,row)){
-  heroPixel(ctx,hero.x,hero.y,hero.mode,hero.dir);
+ if(frameCount<1){
+  heroPixel(ctx,hero.x,hero.y,mode,hero.dir);
   return;
  }
 
- const columns=Math.floor(sheet.naturalWidth/LPC_FRAME_SIZE);
- frameCount=Math.max(1,Math.min(frameCount,columns));
- const frame=Math.floor(time*animation.fps)%frameCount;
+ const elapsed=(hero.eventMode&&time<hero.eventUntil?time-hero.eventStart:time-hero.segmentStart);
+ let frame=Math.floor(Math.max(0,elapsed)*animation.fps);
+ if(animation.loop)frame%=frameCount;
+ else frame=Math.min(frame,frameCount-1);
+ if(hero.segment&&hero.segment.reverse&&mode==='climb')frame=frameCount-1-frame;
+
  const sx=frame*LPC_FRAME_SIZE;
  const sy=row*LPC_FRAME_SIZE;
-
- // Guard both axes before drawing so an absent/partial frame never becomes invisible.
  if(sx+LPC_FRAME_SIZE>sheet.naturalWidth||sy+LPC_FRAME_SIZE>sheet.naturalHeight){
-  heroPixel(ctx,hero.x,hero.y,hero.mode,hero.dir);
+  heroPixel(ctx,hero.x,hero.y,mode,hero.dir);
   return;
  }
 
@@ -247,31 +294,112 @@ function drawHeroSprite(){
 }
 
 let time=0,last=0,randomWake=65;
-const bats=Array.from({length:5},(_,i)=>({x:65+i*84,y:20+(i%2)*7,homeX:65+i*84,homeY:20+(i%2)*7,size:i===1||i===4?1.3:i===2?1.1:.82,age:i%2?70:3,seed:i*1.7,mode:'rest',until:0,vx:0,vy:0,depth:i%3}));
-const fires=[{x:312,y:211,s:1.25}],torches=[{x:46,y:165},{x:355,y:164},{x:436,y:133}];
-const embers=Array.from({length:34},()=>({x:260+rnd(-10,10),y:211-rnd(0,30),vx:rnd(-8,8),vy:rnd(-27,-7),life:rnd(.4,1.8),size:rnd(1,2)}));
-const hero={x:248,y:207,fromX:248,fromY:207,targetX:248,targetY:207,start:0,duration:1,arc:0,mode:'idle',until:3,next:3,idx:0,dir:1,phase:0,activity:'rest'};
-const route=[{x:108,y:167,a:'drink'},{x:155,y:167,a:'walk'},{x:208,y:207,a:'walk'},{x:258,y:207,a:'rest'},{x:372,y:178,a:'run'},{x:425,y:178,a:'drink'},{x:372,y:178,a:'walk'},{x:348,y:207,a:'walk'},{x:258,y:207,a:'rest'},{x:158,y:167,a:'walk'}];
+const BAT_HOMES=[
+ {x:78,y:38,size:.82},{x:160,y:30,size:1.05},{x:244,y:51,size:1.22},
+ {x:338,y:35,size:.9},{x:430,y:47,size:1.12}
+];
+const bats=BAT_HOMES.map((p,i)=>({
+ x:p.x,y:p.y,homeX:p.x,homeY:p.y,size:p.size,
+ age:i%2?70:3,seed:i*1.7,mode:'rest',until:0,vx:0,vy:0,depth:i%3
+}));
+const fires=[{x:108,y:174,s:1.12}];
+const fireY=174;
+const torches=[{x:19,y:177},{x:462,y:172},{x:424,y:94}];
+const embers=Array.from({length:34},()=>({
+ x:108+rnd(-10,10),y:174-rnd(0,22),vx:rnd(-8,8),vy:rnd(-27,-5),
+ life:rnd(.4,1.8),size:rnd(1,2)
+}));
+const smoke=Array.from({length:18},()=>({
+ x:108+rnd(-5,5),y:150-rnd(0,22),vx:rnd(-4,4),vy:rnd(-8,-3),life:rnd(.5,1.8)
+}));
+const foamBases=[{x:46,y:225,w:22}];
+function spawnFoam(){
+ const base=foamBases[0];
+ return {base,x:base.x+rnd(-base.w/2,base.w/2),y:base.y-rnd(0,3),
+  vx:rnd(-10,10),vy:rnd(-25,-7),life:rnd(.25,.9),size:rnd(1,2.5)};
+}
+const foam=Array.from({length:48},spawnFoam);
+
+const hero={
+ x:125,y:176,shadowY:176,fromX:125,fromY:176,targetX:125,targetY:176,
+ start:0,segmentStart:0,duration:1,arc:0,mode:'sleep',displayMode:null,
+ eventMode:null,eventUntil:0,eventStart:0,segment:null,routeIndex:0,dir:1,phase:0
+};
+const adventureRoute=[
+ {x:125,y:176,mode:'sleep',duration:3.5},
+ {x:125,y:176,mode:'idle',duration:1.0},
+ {x:245,y:176,mode:'walk',duration:3.7},
+ {x:285,y:176,mode:'jump',duration:1.05,arc:39},
+ {x:362,y:176,mode:'run',duration:1.65},
+ {x:362,y:114,mode:'climb',duration:2.45},
+ {x:398,y:114,mode:'walk',duration:1.25},
+ {x:398,y:114,mode:'slash',duration:2.6},
+ {x:398,y:114,mode:'celebrate',duration:1.7},
+ {x:362,y:114,mode:'walk',duration:1.25},
+ {x:362,y:176,mode:'climb',duration:2.45,reverse:true},
+ {x:285,y:176,mode:'jump',duration:1.05,arc:38},
+ {x:245,y:176,mode:'jump',duration:1.05,arc:38},
+ {x:75,y:176,mode:'walk',duration:4.25},
+ {x:75,y:176,mode:'drink',duration:2.3},
+ {x:125,y:176,mode:'walk',duration:2.1},
+ {x:125,y:176,mode:'sleep',duration:4.2}
+];
+let hasInitialGitHubSnapshot=false;
+function queueHeroReaction(mode,duration){
+ hero.eventMode=mode;
+ hero.eventStart=time;
+ hero.eventUntil=time+duration;
+}
 function wakeBat(b,t){b.mode='fly';b.until=t+rnd(6,10);const a=rnd(-2.7,.4),speed=rnd(24,52)*(b.depth===0?.7:b.depth===1?1:1.2);b.vx=Math.cos(a)*speed;b.vy=Math.sin(a)*speed;b.y=b.homeY+8;}
 function drawBat(c,b,t){c.save();c.translate(Math.round(b.x),Math.round(b.y));c.scale(b.size,b.size);if(b.mode==='rest'){c.translate(0,3);poly(c,[[-6,-5],[-4,-9],[0,-8],[4,-9],[6,-5],[3,-2],[0,0],[-3,-2]],'#20142a');poly(c,[[-8,-4],[-13,1],[-8,6],[-3,3],[0,1],[3,3],[8,6],[13,1],[8,-4],[4,-1],[-4,-1]],'#613174');px(c,-2,0,2,2,'#ffb7e7');px(c,2,0,2,2,'#ffb7e7');}else{const f=Math.sin(t*13+b.seed)*6;poly(c,[[-2,-1],[-7,-4-f],[-13,-8-f],[-12,0],[-7,5],[-2,3]],'#29142f');poly(c,[[2,-1],[7,-4-f],[13,-8-f],[12,0],[7,5],[2,3]],'#29142f');poly(c,[[-2,-1],[-7,-4-f],[-11,-6-f],[-9,0],[-5,3],[-2,2]],'#a638a7');poly(c,[[2,-1],[7,-4-f],[11,-6-f],[9,0],[5,3],[2,2]],'#ea54c9');px(c,-2,-2,4,8,'#201326');px(c,-2,0,1,1,'#fff0ad');px(c,2,0,1,1,'#fff0ad');}c.restore();}
-function updateBats(dt){if(time>randomWake&&bats.filter(b=>b.mode==='fly').length<2){const idle=bats.filter(b=>b.mode==='rest');if(idle.length)wakeBat(idle[Math.floor(Math.random()*idle.length)],time);randomWake=time+rnd(55,95);}bats.forEach(b=>{if(b.mode==='rest'){b.x=b.homeX+Math.sin(time*1.8+b.seed)*.5;b.y=b.homeY+Math.sin(time*1.5+b.seed)*.5;return;}b.x=clamp(b.x+b.vx*dt,12,W-12);b.y=clamp(b.y+b.vy*dt+Math.sin(time*4+b.seed)*4*dt,12,145);if(b.x<=12||b.x>=W-12)b.vx*=-1;if(b.y<=12||b.y>=145)b.vy*=-1;if(time>b.until){b.mode='rest';b.homeX=clamp(b.x,25,W-25);b.homeY=16+(Math.floor(b.seed)%3)*5;}});}
+function updateBats(dt){if(time>randomWake&&bats.filter(b=>b.mode==='fly').length<2){const idle=bats.filter(b=>b.mode==='rest');if(idle.length)wakeBat(idle[Math.floor(Math.random()*idle.length)],time);randomWake=time+rnd(55,95);}bats.forEach(b=>{if(b.mode==='rest'){b.x=b.homeX+Math.sin(time*1.8+b.seed)*.5;b.y=b.homeY+Math.sin(time*1.5+b.seed)*.5;return;}b.x=clamp(b.x+b.vx*dt,12,W-12);b.y=clamp(b.y+b.vy*dt+Math.sin(time*4+b.seed)*4*dt,24,145);if(b.x<=12||b.x>=W-12)b.vx*=-1;if(b.y<=12||b.y>=145)b.vy*=-1;if(time>b.until){b.mode='rest';b.homeX=clamp(b.x,25,W-25);b.homeY=28+(Math.floor(Math.abs(b.seed)*7)%28);}});}
 function updateHero(dt){
- if(hero.mode==='idle'&&time>hero.next){
-  const p=route[hero.idx++%route.length];hero.fromX=hero.x;hero.fromY=hero.y;hero.targetX=p.x;hero.targetY=p.y;
-  hero.start=time;hero.dir=hero.targetX>=hero.x?1:-1;hero.activity=p.a;hero.mode=p.a==='run'?'run':'walk';
-  const distance=Math.hypot(hero.targetX-hero.x,hero.targetY-hero.y);
-  hero.duration=Math.max(1,distance/(hero.mode==='run'?66:42));
-  hero.arc=Math.abs(hero.targetX-hero.x)>55?21:Math.abs(hero.targetY-hero.y)>12?9:0;
+ if(!hero.segment){
+  const segment=adventureRoute[hero.routeIndex];
+  hero.segment=segment;
+  hero.fromX=hero.x;
+  hero.fromY=hero.y;
+  hero.targetX=segment.x;
+  hero.targetY=segment.y;
+  hero.segmentStart=time;
+  hero.start=time;
+  hero.duration=Math.max(.05,segment.duration);
+  hero.arc=segment.arc||0;
+  hero.mode=segment.mode;
+  if(Math.abs(segment.x-hero.x)>.5)hero.dir=segment.x>hero.x?1:-1;
+  hero.shadowY=hero.y;
  }
- if(hero.mode==='walk'||hero.mode==='run'){
-  const p=clamp((time-hero.start)/hero.duration,0,1),ease=p*p*(3-2*p);
-  hero.x=lerp(hero.fromX,hero.targetX,ease);
-  hero.y=lerp(hero.fromY,hero.targetY,ease)-Math.sin(p*Math.PI)*hero.arc;
-  if(p>=1){hero.x=hero.targetX;hero.y=hero.targetY;hero.mode=hero.activity==='drink'?'drink':hero.activity==='rest'?'sleep':'idle';hero.until=time+(hero.mode==='sleep'?3.1:hero.mode==='drink'?2.1:0);hero.next=hero.until;}
+
+ const segment=hero.segment;
+ const elapsed=time-hero.segmentStart;
+ const moving=['walk','run','jump','climb'].includes(segment.mode);
+ if(moving){
+  const progress=clamp(elapsed/hero.duration,0,1);
+  const eased=progress*progress*(3-2*progress);
+  hero.shadowY=lerp(hero.fromY,hero.targetY,eased);
+  hero.x=lerp(hero.fromX,hero.targetX,eased);
+  hero.y=hero.shadowY;
+  if(segment.mode==='jump')hero.y-=Math.sin(progress*Math.PI)*hero.arc;
+  if(progress>=1){
+   hero.x=hero.targetX;
+   hero.y=hero.targetY;
+   hero.shadowY=hero.targetY;
+  }
  }
- if((hero.mode==='sleep'||hero.mode==='drink')&&time>hero.until){hero.mode='idle';hero.next=time+1.1;}
- if(time<state.celebrate)hero.mode='celebrate';else if(hero.mode==='celebrate')hero.mode='idle';
- hero.phase+=dt*(hero.mode==='run'?18:hero.mode==='walk'?11:2.8);
+
+ if(elapsed>=hero.duration){
+  hero.x=segment.x;
+  hero.y=segment.y;
+  hero.shadowY=segment.y;
+  hero.routeIndex=(hero.routeIndex+1)%adventureRoute.length;
+  hero.segment=null;
+ }
+
+ if(hero.eventMode&&time>=hero.eventUntil){
+  hero.eventMode=null;
+  hero.eventUntil=0;
+ }
+ hero.phase+=dt*(hero.mode==='run'?18:hero.mode==='walk'?11:hero.mode==='jump'?13:hero.mode==='climb'?8:2.8);
 }
 const HERO_ROWS_RAW=[
  "OOOOOOOOOO","OOOHHHHHHOOO","OOHHHHHHHHOO","OHhHHHHHHhHHO","OHhHHHHHHHHHO","OOHHHHHHHHOO",
@@ -334,56 +462,125 @@ function fire(c,f,i){
  for(const p of smoke){if(Math.abs(p.x-x)>9)continue;c.globalAlpha=clamp(p.life/1.8,0,.25);px(c,p.x,p.y,2,2,'#777080');}c.globalAlpha=1;
 }
 function drawWater(c,dt){
- const falls=[{x:119,top:130,bottom:215,w:15},{x:408,top:110,bottom:178,w:12},{x:74,top:224,bottom:258,w:22}];
- falls.forEach(f=>{px(c,f.x-4,f.top-4,f.w+8,5,'#151e34');px(c,f.x-2,f.top-2,f.w+4,2,'#91b8c8');px(c,f.x,f.top,f.w,f.bottom-f.top,'#07518f');
-  for(let col=0;col<f.w;col+=3)for(let j=0;j<13;j++){const speed=30+j*3.7+col*1.2,y=f.top+(time*speed+j*17+col*5)%(f.bottom-f.top);px(c,f.x+col+Math.sin(time*4+j+col)*.8,y,1.5+(j%3===0?1:0),3+(j%4),j%5===0?'#d5f8ff':j%3===0?'#76e0ff':j%2?'#36b8e8':'#1378bd');}
-  for(let j=0;j<6;j++){const xx=f.x+2+(j*7)%(f.w-1),yy=f.top+(time*(42+j*5)+j*23)%(f.bottom-f.top);px(c,xx,yy,1,7+(j%3)*3,'#e5fbff');}
-  for(let j=0;j<12;j++){const xx=f.x-f.w/2+((j*8+Math.floor(time*14))%(f.w+14)),yy=f.bottom+Math.sin(time*8+j)*1.8;px(c,xx,yy,2+j%3,1,j%2?'#efffff':'#78e6ff');}
+ const fall={x:36,top:138,bottom:225,w:20};
+ const cx=fall.x+fall.w/2;
+ px(c,fall.x-3,fall.top-4,fall.w+6,5,'#172338');
+ px(c,fall.x-1,fall.top-2,fall.w+2,2,'#a5d7e9');
+ px(c,fall.x,fall.top,fall.w,fall.bottom-fall.top,'#07518f');
+
+ for(let col=0;col<fall.w;col+=2){
+  for(let stripe=0;stripe<15;stripe++){
+   const speed=31+stripe*3.4+col*1.15;
+   const y=fall.top+(time*speed+stripe*13+col*7)%(fall.bottom-fall.top);
+   const shade=stripe%6===0?'#e4fbff':stripe%3===0?'#7de7ff':stripe%2===0?'#36b8e8':'#1477b8';
+   px(c,fall.x+col+Math.sin(time*4+stripe+col)*.6,y,1,2+(stripe%4),shade);
+  }
+ }
+ for(let i=0;i<8;i++){
+  const x=fall.x+2+(i*7)%(fall.w-3);
+  const y=fall.top+(time*(39+i*5)+i*19)%(fall.bottom-fall.top);
+  px(c,x,y,1,5+(i%3)*3,'#e5fbff');
+ }
+ // Foam rebounds from the pool lip and creates short-lived white spray.
+ foam.forEach(p=>{
+  p.x+=p.vx*dt;
+  p.y+=p.vy*dt;
+  p.vy+=62*dt;
+  p.life-=dt;
+  if(p.y>=p.base.y-1){
+   p.y=p.base.y-1;
+   p.vy=-Math.abs(p.vy)*.48;
+   p.vx+=rnd(-4,4);
+  }
+  if(p.life<=0||Math.abs(p.x-cx)>p.base.w)Object.assign(p,spawnFoam());
+  c.globalAlpha=clamp(p.life/.9,0,.88);
+  px(c,p.x,p.y,p.size,p.size,'#d9f8ff');
  });
- foam.forEach(p=>{p.x+=p.vx*dt;p.y+=p.vy*dt;p.vy+=55*dt;p.life-=dt;if(p.y>=p.base.y-1){p.y=p.base.y-1;p.vy=-Math.abs(p.vy)*.48;p.vx+=rnd(-3,3);}if(p.life<=0||Math.abs(p.x-p.base.x)>p.base.w)Object.assign(p,spawnFoam());c.globalAlpha=clamp(p.life/.9,0,.9);px(c,p.x,p.y,p.size,p.size,'#bdefff');});
- c.globalAlpha=1;for(let i=0;i<58;i++){const x=(i*37+Math.floor(time*16))%W,y=260+i%8;if(hash(i,54)>.35)px(c,x,y,2+i%3,1,i%2?'#5ed7ff':'#177dbc');}
- for(let i=0;i<5;i++){const x=85+i*76+Math.sin(time*1.7+i)*5,y=263+(i%2)*3,r=4+(time*8+i*7)%13;c.strokeStyle='rgba(128,224,255,.55)';c.lineWidth=1;c.beginPath();c.ellipse(x,y,r,2,0,0,Math.PI*2);c.stroke();}
+ c.globalAlpha=1;
+ for(let i=0;i<7;i++){
+  const x=fall.x-5+i*5+Math.sin(time*2+i)*2;
+  const y=fall.bottom+Math.sin(time*8+i)*1.3;
+  c.strokeStyle='rgba(157,231,255,.55)';
+  c.lineWidth=1;
+  c.beginPath();
+  c.ellipse(x,y,4+(time*7+i*5)%12,2,0,0,Math.PI*2);
+  c.stroke();
+ }
 }
 function drawTorches(c){
  torches.forEach((p,i)=>{const f=.5+.5*Math.sin(time*14+i*2.25),r=13+f*9,g=c.createRadialGradient(p.x,p.y,1,p.x,p.y,r);g.addColorStop(0,'rgba(255,137,53,.31)');g.addColorStop(1,'rgba(255,80,20,0)');c.fillStyle=g;c.fillRect(p.x-r,p.y-r,r*2,r*2);px(c,p.x-5,p.y+2,10,3,'#24202b');px(c,p.x-2,p.y+4,4,7,'#573a31');px(c,p.x-6,p.y+9,12,2,'#171522');const fy=p.y+Math.sin(time*16+i)*1.2;poly(c,[[p.x-4,fy+4],[p.x-3,fy-2],[p.x-1,fy-8-f*3],[p.x+1,fy-4],[p.x+4,fy-9],[p.x+5,fy+4]],'#9b3c25');poly(c,[[p.x-3,fy+3],[p.x-1,fy-3],[p.x+1,fy-7],[p.x+4,fy+3]],'#ff9d35');px(c,p.x,fy-3,2,4,'#fff0aa');});
 }
-function drawEmbers(c,dt){for(let i=0;i<embers.length;i++){const p=embers[i];p.x+=p.vx*dt;p.y+=p.vy*dt;p.life-=dt;if(p.life<=0||p.y<100){embers[i]={x:312+rnd(-11,11),y:211,vx:rnd(-9,9),vy:rnd(-29,-8),life:rnd(.5,1.9),size:rnd(1,2)};continue;}c.globalAlpha=clamp(p.life,0,1);px(c,p.x,p.y,p.size,p.size,i%3?'#ffb85a':'#ff6c38');c.globalAlpha=1;}}
+function drawEmbers(c,dt){
+ for(let i=0;i<embers.length;i++){
+  const p=embers[i];
+  p.x+=p.vx*dt;
+  p.y+=p.vy*dt;
+  p.life-=dt;
+  if(p.life<=0||p.y<fireY-55){
+   embers[i]={
+    x:108+rnd(-11,11),y:174,vx:rnd(-9,9),vy:rnd(-29,-8),
+    life:rnd(.5,1.9),size:rnd(1,2)
+   };
+   continue;
+  }
+  c.globalAlpha=clamp(p.life,0,1);
+  px(c,p.x,p.y,p.size,p.size,i%3?'#ffb85a':'#ff6c38');
+  c.globalAlpha=1;
+ }
+}
 function drawCrystalGlow(c){[[90,204,1],[397,187,.85],[314,126,.65]].forEach(([x,y,s])=>{const a=.5+.5*Math.sin(time*2+x);c.fillStyle='rgba(159,77,255,'+(.06+a*.12)+')';c.fillRect(x-9*s,y-12*s,18*s,25*s);crystal(c,x,y,s);});}
 function render(dt){
  ctx.imageSmoothingEnabled=false;
  ctx.fillStyle=C.void;
  ctx.fillRect(0,0,W,H);
- const fx=Math.sin(time*.07)*1.4,mx=Math.sin(time*.13);
- drawSceneLayer('far',far,fx);
- drawSceneLayer('mid',mid,mx);
+
+ // The uploaded far layer is the complete cave composition. Transparent mid/front
+ // overlays are optional; an empty/missing overlay must never cover the final artwork.
+ drawSceneLayer('far',far,0);
+ drawSceneLayer('mid',mid,0);
  drawWater(ctx,dt);
  drawFrontLayer();
  drawCrystalGlow(ctx);
  fires.forEach(fire.bind(null,ctx));
  drawTorches(ctx);
  drawEmbers(ctx,dt);
+
  updateBats(dt);
  bats.sort((a,b)=>a.depth-b.depth).forEach(b=>drawBat(ctx,b,time));
+
  updateHero(dt);
  ctx.fillStyle='#03050a99';
  ctx.beginPath();
- ctx.ellipse(hero.x,hero.y+1,13,2.4,0,0,Math.PI*2);
+ ctx.ellipse(hero.x,hero.shadowY+1,13,2.4,0,0,Math.PI*2);
  ctx.fill();
  drawHeroSprite();
- if(hero.mode==='sleep'){
+
+ const visibleMode=hero.displayMode||(hero.eventMode&&time<hero.eventUntil?hero.eventMode:hero.mode);
+ if(visibleMode==='sleep'){
   ctx.fillStyle='#d8ebff';
   ctx.font='7px monospace';
-  ctx.fillText('Z',hero.x+10,hero.y-34+Math.sin(time*2)*2);
+  ctx.fillText('Z',hero.x+12,hero.y-34+Math.sin(time*2)*2);
  }
  if(state.failed>0&&Math.floor(time*2)%2===0){
-  px(ctx,389,200,15,2,'#d1c4b5');
-  px(ctx,392,195,10,3,'#eee1cb');
-  px(ctx,388,196,3,4,'#eee1cb');
-  px(ctx,402,196,3,4,'#eee1cb');
+  px(ctx,285,207,15,2,'#d1c4b5');
+  px(ctx,288,202,10,3,'#eee1cb');
+  px(ctx,284,203,3,4,'#eee1cb');
+  px(ctx,298,203,3,4,'#eee1cb');
  }
 }
 function store(k,v){try{if(v===undefined)return localStorage.getItem(k);localStorage.setItem(k,v);}catch(e){}return null;}
-function updateHUD(d){const commits=Array.isArray(d.commits)?d.commits:[],last=d.lastCommit||commits.reduce((a,b)=>!a||new Date(b.date)>new Date(a.date)?b:a,null),days=last?.date?Math.max(0,Math.floor((Date.now()-new Date(last.date))/DAY)):7,ci=d.ci||{};Object.assign(state,{total:Number(d.totalCommits??commits.length),repos:Number(d.repositoriesScanned||0),passed:Number(ci.successfulRuns||0),failed:Number(ci.failedRuns||0),pending:Number(ci.pendingRuns||0),checked:Number(ci.checkedRuns||0),days});const level=Math.max(1,Math.floor(state.total/25)+1+Math.floor(state.passed/5)),hunger=clamp(100-Math.max(0,days-1)*27,5,100),water=clamp(100-days*10,8,100),evolution=clamp(16+level*8+state.passed*2,8,100);$('hungerBar').style.width=hunger+'%';$('waterBar').style.width=water+'%';$('evolutionBar').style.width=evolution+'%';$('level').textContent='Lv. '+level;$('hudCommits').textContent=new Intl.NumberFormat('pt-BR').format(state.total);$('hudRepos').textContent=state.repos;$('hudActivity').textContent=last?days===0?'Hoje':days+'d':'—';$('hudActions').textContent=state.pending?'RUN':state.failed?'FAIL':state.passed?'PASS':'—';$('totalCommits').textContent=new Intl.NumberFormat('pt-BR').format(state.total);$('lastCommit').textContent=last?(days===0?'hoje':days===1?'há 1 dia':'há '+days+' dias'):'Ainda não';$('lastCommitDate').textContent=last?new Intl.DateTimeFormat('pt-BR',{dateStyle:'medium'}).format(new Date(last.date))+(last.repository?' · '+last.repository:''):'esperando atividade';$('hungerLabel').textContent=days>=7?'Faminto':days>=3?'Com fome':'Satisfeito';$('hungerDetail').textContent=days+' dia(s) desde o último commit';$('ciSummary').textContent=state.passed+' aprovadas · '+state.failed+' falhas · '+state.pending+' em andamento';$('ciLight').style.background=state.failed?'#ff4b64':state.pending?'#ffd16e':'#52ef91';$('testBar').style.width=(state.checked?state.passed/state.checked*100:0)+'%';$('testCount').textContent=state.checked?state.passed+'/'+state.checked+' workflows aprovados':'sem execuções classificadas';$('waterEvent').textContent=days===0?'+1 Água':'Água '+water+'%';$('waterDetail').textContent=days===0?'commit recente renova a jornada':'atividade recente mantém a fonte viva';$('qualityEvent').textContent=state.failed?'Build com falha':state.passed?'+1 Evolução':'Qualidade em construção';$('qualityDetail').textContent=state.failed?'marcas vermelhas no chão':state.passed+' workflows concluídos com sucesso';$('updateStatus').textContent='Dados coletados em '+new Intl.DateTimeFormat('pt-BR',{dateStyle:'medium',timeStyle:'short'}).format(new Date(d.generatedAt||Date.now()))+' · '+state.repos+' repositórios públicos analisados.';const sha=last?.sha||'',runAt=ci.latestRunAt||'',oldSha=store('cc-sha'),oldRun=store('cc-run'),initial=oldSha===null&&oldRun===null;if(!initial&&sha&&oldSha&&sha!==oldSha){state.celebrate=time+5;state.boost=performance.now()+5500;$('waterEvent').textContent='+1 Água';$('waterDetail').textContent='novo commit detectado · explorador celebra';const b=bats.find(v=>v.mode==='rest');if(b)wakeBat(b,time);}if(!initial&&runAt&&oldRun&&runAt!==oldRun&&ci.latestConclusion==='success'){state.celebrate=time+5;state.boost=performance.now()+6000;$('qualityEvent').textContent='+1 Evolução';$('qualityDetail').textContent='execução verde detectada · caverna floresce';const b=bats.find(v=>v.mode==='rest');if(b)wakeBat(b,time);}if(oldSha===null)store('cc-sha',sha);else if(sha)store('cc-sha',sha);if(oldRun===null)store('cc-run',runAt);else if(runAt)store('cc-run',runAt);if(state.failed>0&&Math.random()<.15){const b=bats.find(v=>v.mode==='rest');if(b)wakeBat(b,time);}}
+function updateHUD(d){const previous={total:state.total,passed:state.passed,failed:state.failed};const commits=Array.isArray(d.commits)?d.commits:[],last=d.lastCommit||commits.reduce((a,b)=>!a||new Date(b.date)>new Date(a.date)?b:a,null),days=last?.date?Math.max(0,Math.floor((Date.now()-new Date(last.date))/DAY)):7,ci=d.ci||{};Object.assign(state,{total:Number(d.totalCommits??commits.length),repos:Number(d.repositoriesScanned||0),passed:Number(ci.successfulRuns||0),failed:Number(ci.failedRuns||0),pending:Number(ci.pendingRuns||0),checked:Number(ci.checkedRuns||0),days});
+if(hasInitialGitHubSnapshot){
+ if(state.failed>previous.failed){
+  queueHeroReaction('slash',2.6);
+  const resting=bats.filter(b=>b.mode==='rest');
+  if(resting.length)wakeBat(resting[Math.floor(Math.random()*resting.length)],time);
+ }else if(state.total>previous.total||state.passed>previous.passed){
+  queueHeroReaction('celebrate',2.0);
+  state.boost=performance.now()+4200;
+ }
+}
+hasInitialGitHubSnapshot=true;const level=Math.max(1,Math.floor(state.total/25)+1+Math.floor(state.passed/5)),hunger=clamp(100-Math.max(0,days-1)*27,5,100),water=clamp(100-days*10,8,100),evolution=clamp(16+level*8+state.passed*2,8,100);$('hungerBar').style.width=hunger+'%';$('waterBar').style.width=water+'%';$('evolutionBar').style.width=evolution+'%';$('level').textContent='Lv. '+level;$('hudCommits').textContent=new Intl.NumberFormat('pt-BR').format(state.total);$('hudRepos').textContent=state.repos;$('hudActivity').textContent=last?days===0?'Hoje':days+'d':'—';$('hudActions').textContent=state.pending?'RUN':state.failed?'FAIL':state.passed?'PASS':'—';$('totalCommits').textContent=new Intl.NumberFormat('pt-BR').format(state.total);$('lastCommit').textContent=last?(days===0?'hoje':days===1?'há 1 dia':'há '+days+' dias'):'Ainda não';$('lastCommitDate').textContent=last?new Intl.DateTimeFormat('pt-BR',{dateStyle:'medium'}).format(new Date(last.date))+(last.repository?' · '+last.repository:''):'esperando atividade';$('hungerLabel').textContent=days>=7?'Faminto':days>=3?'Com fome':'Satisfeito';$('hungerDetail').textContent=days+' dia(s) desde o último commit';$('ciSummary').textContent=state.passed+' aprovadas · '+state.failed+' falhas · '+state.pending+' em andamento';$('ciLight').style.background=state.failed?'#ff4b64':state.pending?'#ffd16e':'#52ef91';$('testBar').style.width=(state.checked?state.passed/state.checked*100:0)+'%';$('testCount').textContent=state.checked?state.passed+'/'+state.checked+' workflows aprovados':'sem execuções classificadas';$('waterEvent').textContent=days===0?'+1 Água':'Água '+water+'%';$('waterDetail').textContent=days===0?'commit recente renova a jornada':'atividade recente mantém a fonte viva';$('qualityEvent').textContent=state.failed?'Build com falha':state.passed?'+1 Evolução':'Qualidade em construção';$('qualityDetail').textContent=state.failed?'marcas vermelhas no chão':state.passed+' workflows concluídos com sucesso';$('updateStatus').textContent='Dados coletados em '+new Intl.DateTimeFormat('pt-BR',{dateStyle:'medium',timeStyle:'short'}).format(new Date(d.generatedAt||Date.now()))+' · '+state.repos+' repositórios públicos analisados.';const sha=last?.sha||'',runAt=ci.latestRunAt||'',oldSha=store('cc-sha'),oldRun=store('cc-run'),initial=oldSha===null&&oldRun===null;if(!initial&&sha&&oldSha&&sha!==oldSha){state.celebrate=time+5;state.boost=performance.now()+5500;$('waterEvent').textContent='+1 Água';$('waterDetail').textContent='novo commit detectado · explorador celebra';const b=bats.find(v=>v.mode==='rest');if(b)wakeBat(b,time);}if(!initial&&runAt&&oldRun&&runAt!==oldRun&&ci.latestConclusion==='success'){state.celebrate=time+5;state.boost=performance.now()+6000;$('qualityEvent').textContent='+1 Evolução';$('qualityDetail').textContent='execução verde detectada · caverna floresce';const b=bats.find(v=>v.mode==='rest');if(b)wakeBat(b,time);}if(oldSha===null)store('cc-sha',sha);else if(sha)store('cc-sha',sha);if(oldRun===null)store('cc-run',runAt);else if(runAt)store('cc-run',runAt);if(state.failed>0&&Math.random()<.15){const b=bats.find(v=>v.mode==='rest');if(b)wakeBat(b,time);}}
 async function refresh(){try{const r=await fetch('./data/commits.json?ts='+Date.now(),{cache:'no-store'});if(!r.ok)throw new Error('HTTP '+r.status);updateHUD(await r.json());}catch(e){$('updateStatus').textContent='Dados do GitHub indisponíveis; a caverna procedural continua ativa.';$('ciSummary').textContent='Resultados de CI indisponíveis.';console.warn('[Commit Cave]',e.message);}}
 let frame=0;function loop(now){if(!frame)frame=now;const dt=Math.min(.04,(now-frame)/1000);frame=now;time+=dt;render(dt);requestAnimationFrame(loop);}requestAnimationFrame(loop);refresh();setInterval(()=>{if(!document.hidden)refresh();},60000);document.addEventListener('visibilitychange',()=>{if(!document.hidden)frame=0;});
 })();
