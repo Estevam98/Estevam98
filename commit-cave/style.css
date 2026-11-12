@@ -6,3 +6,6 @@
 .tool-strip i{display:inline-grid;place-items:center;width:17px;height:17px;border:1px solid #647c9d;background:#101a2c;color:#7dd7ff;font-size:8px;font-style:normal;font-weight:900;box-shadow:1px 1px #03050a}
 .world{background:#050914}.world canvas{image-rendering:pixelated;image-rendering:crisp-edges}
 @media(max-width:760px){.tool-strip{align-items:flex-start;flex-direction:column;gap:7px}.tool-strip>div{justify-content:flex-start;gap:8px 12px}.tool-strip span{font-size:7px}}
+
+/* Keep the right-hand vampire altar unobstructed in the playable scene. */
+.hud.banners{display:none!important}
