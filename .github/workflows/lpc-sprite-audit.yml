@@ -29,4 +29,5 @@ jobs:
             lpc-audit.json
             lpc-contact-sheet.png
             lpc-all-frames-rows-0-53.png
+            preview-*.png
           if-no-files-found: error
