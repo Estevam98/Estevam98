@@ -71,6 +71,35 @@ const front=layer(c=>{
 // Optional high-resolution PNG assets. Missing/invalid files never block the procedural world.
 const pngAssets={far:null,mid:null,front:null,hero:null};
 const assetStatus={far:'loading',mid:'loading',front:'loading',hero:'loading'};
+const LPC_FRAME_SIZE=64;
+let heroRowVisibility=null;
+
+function inspectLpcRows(image){
+ const rowsToInspect=[3,7,11,20,25];
+ const probeCanvas=document.createElement('canvas');
+ probeCanvas.width=image.naturalWidth;
+ probeCanvas.height=LPC_FRAME_SIZE;
+ const probe=probeCanvas.getContext('2d',{willReadFrequently:true});
+ if(!probe)return null;
+ const visibility=new Map();
+ try{
+  for(const row of rowsToInspect){
+   const sourceY=row*LPC_FRAME_SIZE;
+   if(sourceY+LPC_FRAME_SIZE>image.naturalHeight){visibility.set(row,false);continue;}
+   probe.clearRect(0,0,probeCanvas.width,probeCanvas.height);
+   probe.drawImage(image,0,sourceY,image.naturalWidth,LPC_FRAME_SIZE,0,0,probeCanvas.width,LPC_FRAME_SIZE);
+   const pixels=probe.getImageData(0,0,probeCanvas.width,LPC_FRAME_SIZE).data;
+   let visible=false;
+   for(let i=3;i<pixels.length;i+=4){if(pixels[i]>0){visible=true;break;}}
+   visibility.set(row,visible);
+  }
+  return visibility;
+ }catch(error){
+  console.warn('[Commit Cave] Não foi possível inspecionar transparência da spritesheet LPC; usando validação dimensional.',error);
+  return null;
+ }
+}
+
 function loadOptionalPng(key,src,isValid){
  const image=new Image();
  image.onload=()=>{
@@ -81,6 +110,7 @@ function loadOptionalPng(key,src,isValid){
   }
   pngAssets[key]=image;
   assetStatus[key]='ready';
+  if(key==='hero')heroRowVisibility=inspectLpcRows(image);
  };
  image.onerror=()=>{
   assetStatus[key]='missing';
@@ -91,17 +121,27 @@ function loadOptionalPng(key,src,isValid){
 loadOptionalPng('far','./assets/layer-far.png',img=>img.naturalWidth===W&&img.naturalHeight===H);
 loadOptionalPng('mid','./assets/layer-mid.png',img=>img.naturalWidth===W&&img.naturalHeight===H);
 loadOptionalPng('front','./assets/layer-front.png',img=>img.naturalWidth===W&&img.naturalHeight===H);
-// Sprite sheet contract: 4 columns x 6 rows, each frame exactly 48x48 (192x288 total).
-loadOptionalPng('hero','./assets/hero-sheet.png',img=>img.naturalWidth===192&&img.naturalHeight===288);
+// Universal LPC uses 64x64 frames; extended sheets are supported as long as both dimensions align to the frame grid.
+loadOptionalPng('hero','./assets/hero-sheet.png',img=>
+ img.naturalWidth>=LPC_FRAME_SIZE&&img.naturalHeight>=LPC_FRAME_SIZE&&
+ img.naturalWidth%LPC_FRAME_SIZE===0&&img.naturalHeight%LPC_FRAME_SIZE===0
+);
 
 const HERO_ANIMATIONS={
- idle:{row:0,frames:4,fps:4},
- walk:{row:1,frames:4,fps:9},
- run:{row:2,frames:4,fps:13},
- celebrate:{row:3,frames:4,fps:8},
- drink:{row:4,frames:4,fps:6},
- sleep:{row:5,frames:4,fps:3}
+ idle:{row:25,fallbackRow:11,frames:4,fallbackFrames:1,fps:4},
+ walk:{row:11,fallbackRow:11,frames:9,fallbackFrames:1,fps:9},
+ run:{row:11,fallbackRow:11,frames:9,fallbackFrames:1,fps:14},
+ celebrate:{row:3,fallbackRow:11,frames:7,fallbackFrames:1,fps:8},
+ drink:{row:7,fallbackRow:11,frames:8,fallbackFrames:1,fps:6},
+ sleep:{row:20,fallbackRow:11,frames:6,fallbackFrames:1,fps:3}
 };
+
+function isLpcRowUsable(sheet,row){
+ if(!Number.isInteger(row)||row<0)return false;
+ if((row+1)*LPC_FRAME_SIZE>sheet.naturalHeight)return false;
+ const inspected=heroRowVisibility&&heroRowVisibility.get(row);
+ return inspected===undefined?true:inspected;
+}
 function drawSceneLayer(key,fallback,offsetX=0){
  const image=pngAssets[key];
  if(image){
@@ -126,15 +166,46 @@ function drawHeroSprite(){
   heroPixel(ctx,hero.x,hero.y,hero.mode,hero.dir);
   return;
  }
+
  const animation=HERO_ANIMATIONS[hero.mode]||HERO_ANIMATIONS.idle;
- const frame=Math.floor(time*animation.fps)%animation.frames;
- const sx=frame*48,sy=animation.row*48;
+ const columns=Math.floor(sheet.naturalWidth/LPC_FRAME_SIZE);
+ let row=animation.row;
+ let frameCount=animation.frames;
+
+ if(!isLpcRowUsable(sheet,row)){
+  // Idle prefers row 25; a shortened LPC sheet falls back to the first Walk Right frame on row 11.
+  row=isLpcRowUsable(sheet,animation.fallbackRow)
+   ?animation.fallbackRow
+   :(isLpcRowUsable(sheet,0)?0:-1);
+  frameCount=animation.fallbackFrames||1;
+ }
+
+ if(row<0||columns<1){
+  heroPixel(ctx,hero.x,hero.y,hero.mode,hero.dir);
+  return;
+ }
+
+ frameCount=Math.max(1,Math.min(frameCount,columns));
+ const frame=Math.floor(time*animation.fps)%frameCount;
+ const sx=frame*LPC_FRAME_SIZE;
+ const sy=row*LPC_FRAME_SIZE;
+
+ // Final source-rectangle guard: never read outside the actual image bounds.
+ if(sx+LPC_FRAME_SIZE>sheet.naturalWidth||sy+LPC_FRAME_SIZE>sheet.naturalHeight){
+  heroPixel(ctx,hero.x,hero.y,hero.mode,hero.dir);
+  return;
+ }
+
  ctx.save();
  ctx.imageSmoothingEnabled=false;
  ctx.translate(Math.round(hero.x),Math.round(hero.y));
- if(hero.dir<0)ctx.scale(-1,1);
- // The sprite's feet align with the same world-space ground anchor as heroPixel().
- ctx.drawImage(sheet,sx,sy,48,48,-24,-48,48,48);
+ if(hero.dir===-1)ctx.scale(-1,1);
+ // Native 64x64 destination; bottom-center stays anchored to the explorer's world position.
+ ctx.drawImage(
+  sheet,
+  sx,sy,LPC_FRAME_SIZE,LPC_FRAME_SIZE,
+  -32,-64,LPC_FRAME_SIZE,LPC_FRAME_SIZE
+ );
  ctx.restore();
 }
 

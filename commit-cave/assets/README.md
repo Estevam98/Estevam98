@@ -14,27 +14,24 @@ As três imagens devem ser PNG RGBA, com transparência onde a camada precisa re
 
 A água, espuma, cristais luminosos, morcegos, tochas, fogueira, brasas, fumaça, HUD e dados do GitHub continuam sendo renderizados pelo JavaScript por cima das camadas.
 
-## Spritesheet do explorador
+## Spritesheet Universal LPC do explorador
 
 Arquivo: `hero-sheet.png`
 
-- **Dimensão total obrigatória:** 192 × 288 px.
-- **Quadro individual:** 48 × 48 px.
-- **Grade:** 4 colunas × 6 linhas.
-- Formato: PNG RGBA com fundo transparente.
-- Cada linha contém quatro quadros consecutivos da mesma animação.
-- Os pés do personagem devem ficar alinhados na base do quadro para manter o contato com as plataformas.
+A spritesheet enviada ao repositório foi verificada como **1152 × 4224 px**, organizada em **18 colunas × 66 linhas**, com quadros de **64 × 64 px**. O carregador aceita outras folhas estendidas desde que largura e altura sejam múltiplos de 64 e exista ao menos um quadro.
 
-| Linha (começa em 0) | Estado | FPS padrão |
-|---:|---|---:|
-| 0 | `idle` — respiração/descanso | 4 |
-| 1 | `walk` — caminhada | 9 |
-| 2 | `run` — corrida | 13 |
-| 3 | `celebrate` — comemoração | 8 |
-| 4 | `drink` — beber água | 6 |
-| 5 | `sleep` — dormir | 3 |
+| Estado | Linha LPC (índice iniciado em 0) | Quadros | FPS |
+|---|---:|---:|---:|
+| `idle` — respiração/parado | 25 | 4 | 4 |
+| `walk` — Walk Right | 11 | 9 | 9 |
+| `run` — Walk Right acelerado | 11 | 9 | 14 |
+| `celebrate` — Spellcast Right | 3 | 7 | 8 |
+| `drink` — Thrust Right | 7 | 8 | 6 |
+| `sleep` — Hurt/caído | 20 | 6 | 3 |
 
-A origem de cada quadro é calculada pela coluna (`frame × 48`) e pela linha (`row × 48`). A direção horizontal é invertida pelo Canvas quando o explorador caminha para a esquerda.
+A linha 25 é usada para `idle` quando existe e contém pixels visíveis. Se a folha não tiver essa linha ou ela estiver totalmente transparente, o explorador usa o primeiro quadro da linha 11 como fallback de repouso. Se uma linha de animação estiver ausente ou totalmente transparente, a lógica tenta a linha 11 com um único quadro; se ela também não estiver disponível, usa o sprite procedural.
+
+O recorte usa `sourceX = frame × 64` e `sourceY = row × 64`. Antes de desenhar, o código verifica os limites reais de largura e altura e inspeciona se as linhas usadas contêm pixels não transparentes. Cada quadro é desenhado no Canvas a 64 × 64 pixels lógicos, com `imageSmoothingEnabled = false`; o personagem é espelhado horizontalmente quando `hero.dir === -1`.
 
 ## Fallback e validação
 
