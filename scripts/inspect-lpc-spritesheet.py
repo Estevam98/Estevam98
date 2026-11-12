@@ -66,6 +66,7 @@ for row in range(detail_rows):
             dd.text((dx+2,dy+thumb*2+2),f"r{row:02} c{col:02}",fill=(230,238,255,255))
 detail.save("lpc-all-frames-rows-0-53.png")
 
+report={"file":str(path),"dimensions":[W,H],"frame_size":[64,64],"columns":cols,"rows":rows,"minimum_opaque":150,"row_analysis":row_data}
 # Inspect backgrounds uploaded by the user so the canvas layout can match the supplied art.
 backgrounds={}
 for name in ("layer-far.png","layer-mid.png","layer-front.png"):
@@ -76,8 +77,6 @@ for name in ("layer-far.png","layer-mid.png","layer-front.png"):
     else:
         backgrounds[name]={"missing":True}
 report["background_assets"]=backgrounds
-Path("lpc-audit.json").write_text(json.dumps(report,indent=2),encoding="utf-8")
-report={"file":str(path),"dimensions":[W,H],"frame_size":[64,64],"columns":cols,"rows":rows,"minimum_opaque":150,"row_analysis":row_data}
 Path("lpc-audit.json").write_text(json.dumps(report,indent=2),encoding="utf-8")
 print(f"LPC_AUDIT_DIMENSIONS {W}x{H} GRID {cols}x{rows}")
 for item in row_data:
