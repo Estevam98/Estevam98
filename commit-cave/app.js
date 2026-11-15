@@ -254,7 +254,7 @@ const bats=[];
 const batByCommit=new Map();
 const fires=[{x:181,y:172,s:1.12}];
 const fireY=172;
-const torches=[{x:72,y:162},{x:408,y:162}];
+const torches=[{x:72,y:162}];
 const altarCandles=[
  {x:382,y:92,opacity:.78,radius:8,next:0},
  {x:412,y:92,opacity:.66,radius:9,next:0}
@@ -274,26 +274,17 @@ function spawnFoam(){
  return {
   x:base.x+rnd(-base.w/2+.5,base.w/2-.5),
   y:base.y,
-  vx:rnd(-1.4,1.4),
-  vy:rnd(-13,-8),
-  life:rnd(.38,.68),
+  vx:rnd(-1.05,1.05),
+  vy:rnd(-8,-5),
+  life:rnd(.45,.75),
   bounces:0,
-  size:rnd(1,1.35),
+  size:1,
   tone:Math.random()
  };
 }
-const foam=Array.from({length:24},spawnFoam);
 
-const waterfallStreams=[
- {x:14,speed:58,phase:2,length:2,intensity:.70},
- {x:16,speed:67,phase:19,length:3,intensity:.78},
- {x:18,speed:61,phase:33,length:2,intensity:.66},
- {x:20,speed:73,phase:11,length:3,intensity:.90},
- {x:22,speed:64,phase:27,length:2,intensity:.74},
- {x:24,speed:70,phase:41,length:3,intensity:.82},
- {x:26,speed:56,phase:7,length:2,intensity:.64},
- {x:29,speed:68,phase:23,length:3,intensity:.76}
-];
+// Sparse spray: just ten tiny droplets at the base of the authored waterfall.
+const foam=Array.from({length:10},spawnFoam);
 
 const hero={
  x:125,y:178,shadowY:178,fromX:125,fromY:178,targetX:125,targetY:178,
@@ -666,105 +657,58 @@ function heroPixel(c, x, y, mode, dir) {
 function fire(c,f,i){
  const x=181;
  const y=172;
- const flicker=Math.sin(time*12+i);
- const secondaryFlicker=Math.sin(time*13.4+i*1.7);
- const pulse=.5+.5*flicker;
+ const pulse=.5+.5*Math.sin(time*8);
  const boost=performance.now()<state.boost?1.2:1;
- const glowOpacity=clamp((.08+.12*pulse)*boost,0,.26);
- const glowRadius=13+3*pulse;
-
- const halo=c.createRadialGradient(x,y,0,x,y,glowRadius);
- halo.addColorStop(0,'rgba(255,174,88,'+glowOpacity+')');
- halo.addColorStop(.38,'rgba(255,126,54,'+(glowOpacity*.6)+')');
- halo.addColorStop(.78,'rgba(255,86,32,'+(glowOpacity*.2)+')');
+ const opacity=clamp((.08+.12*pulse)*boost,0,.24);
+ const radius=(16+4*pulse)*(f.s||1);
+ const halo=c.createRadialGradient(x,y,0,x,y,radius);
+ halo.addColorStop(0,'rgba(255,174,88,'+opacity+')');
+ halo.addColorStop(.38,'rgba(255,126,54,'+(opacity*.58)+')');
+ halo.addColorStop(.78,'rgba(255,86,32,'+(opacity*.18)+')');
  halo.addColorStop(1,'rgba(255,60,20,0)');
-
- const outerHeight=Math.round(8+(flicker+1)*1.6);
- const middleHeight=Math.round(5+(secondaryFlicker+1)*1.4);
- const coreHeight=Math.max(4,middleHeight-2);
- const sideHeight=Math.round((secondaryFlicker+1)*1.2);
 
  c.save();
  c.globalCompositeOperation='screen';
+ c.globalAlpha=1;
  c.fillStyle=halo;
- c.fillRect(x-glowRadius,y-glowRadius,glowRadius*2,glowRadius*2);
-
- // Orange outer tongue and side tongues.
- poly(c,[
-  [x-5,y],[x-4,y-3],[x-3,y-5],[x-2,y-4-sideHeight],
-  [x,y-outerHeight],[x+1,y-outerHeight+3],[x+3,y-5],[x+4,y-2],[x+5,y]
- ],'#ff702d');
- poly(c,[
-  [x-4,y],[x-3,y-3],[x-2,y-4-sideHeight],[x-1,y-2],[x-1,y]
- ],'#ff702d');
- poly(c,[
-  [x+2,y],[x+3,y-3],[x+3,y-5],[x+4,y-2],[x+4,y]
- ],'#ff702d');
-
- // Yellow center has a separate oscillation phase.
- poly(c,[
-  [x-3,y],[x-2,y-3],[x-1,y-middleHeight],[x,y-middleHeight-1],
-  [x+1,y-4],[x+2,y-2],[x+3,y]
- ],'#ffd078');
-
- // White-hot core pixels stay inside the yellow flame.
- poly(c,[
-  [x-1,y],[x-1,y-2],[x,y-coreHeight],[x+1,y-2],[x+1,y]
- ],'#ffffff');
- px(c,x-1,y-2,1,2,'#ffffff');
- px(c,x,y-3,1,2,'#ffffff');
+ c.fillRect(x-radius,y-radius,radius*2,radius*2);
  c.restore();
 }
 
 function drawWater(c,dt){
  const base=foamBases[0];
- const waterOpacity=.035+.015*(.5+.5*Math.sin(time*2.8));
-
  c.save();
  c.globalCompositeOperation='screen';
- c.beginPath();
- c.rect(14,138,16,57);
- c.clip();
 
- // Eight independent 1px streams. Each pass draws only 2–3px dashes.
- for(const stream of waterfallStreams){
-  stream.phase=(stream.phase+stream.speed*dt)%57;
-  for(let dash=0;dash<3;dash++){
-   const y=138+((stream.phase+dash*19)%57);
-   if(y>=195)continue;
-   c.globalAlpha=waterOpacity*stream.intensity;
-   c.fillStyle=dash===1?'#eafaff':'#bcefff';
-   c.fillRect(stream.x,Math.round(y),1,Math.min(stream.length,195-y));
-  }
- }
-
- // Droplets are emitted and recycled only around the impact shelf at y=195.
+ // No water lines, strips or overlays: only a restrained spray at y=195.
  for(const particle of foam){
   particle.x+=particle.vx*dt;
   particle.y+=particle.vy*dt;
-  particle.vy+=34*dt;
-  particle.vx*=Math.max(0,1-3.2*dt);
+  particle.vy+=28*dt;
+  particle.vx*=Math.max(0,1-3.5*dt);
   particle.life-=dt;
 
+  // Keep droplets strictly inside the native waterfall opening.
   if(particle.x<14.5||particle.x>29.5){
    particle.x=clamp(particle.x,14.5,29.5);
-   particle.vx*=-.2;
+   particle.vx*=-.18;
   }
 
-  if(particle.y>=base.y){
+  // Collision plane is the exact pool edge. A single soft rebound is allowed.
+  if(particle.y>=base.y&&particle.vy>0){
    particle.y=base.y;
-   particle.vy=-Math.abs(particle.vy)*.2;
+   particle.vy=-Math.abs(particle.vy)*.18;
    particle.bounces++;
   }
 
-  if(particle.life<=0||particle.bounces>=2||particle.y<base.y-4){
+  if(particle.life<=0||particle.bounces>=2){
    Object.assign(particle,spawnFoam());
    continue;
   }
 
-  c.globalAlpha=.04+.06*clamp(particle.life/.68,0,1);
+  c.globalAlpha=.05;
   px(c,particle.x,particle.y,particle.size,particle.size,
-   particle.tone>.55?'#ffffff':'#d9f8ff');
+   particle.tone>.5?'#ffffff':'#d9f8ff');
  }
  c.restore();
  c.globalAlpha=1;
@@ -848,11 +792,10 @@ const mistBands=[
 ];
 let mistClock=0;
 function drawAtmosphericMist(c,dt){
- dt=Number.isFinite(dt)?clamp(dt,0,.05):0;
- mistClock+=dt;
-
+ if(!Number.isFinite(dt))return;
  c.save();
  c.globalCompositeOperation='screen';
+
  for(const band of mistBands){
   const cycle=W+band.width;
   const travel=(mistClock*band.speed+band.offset)%cycle;
@@ -861,7 +804,6 @@ function drawAtmosphericMist(c,dt){
   c.fillStyle='rgba(150, 170, 200, 0.04)';
   c.fillRect(Math.round(x),band.y,band.width,band.height);
 
-  // Pixel wisps share the same time phase and drift with the cloud strip.
   c.fillStyle='rgba(150, 170, 200, 0.026)';
   c.fillRect(Math.round(x+18),band.y-2,Math.round(band.width*.28),2);
   c.fillRect(Math.round(x+band.width*.58),band.y+band.height,Math.round(band.width*.2),1);
@@ -950,5 +892,5 @@ if(hasInitialGitHubSnapshot){
 }
 hasInitialGitHubSnapshot=true;const level=Math.max(1,Math.floor(state.total/25)+1+Math.floor(state.passed/5)),hunger=clamp(100-Math.max(0,days-1)*27,5,100),water=clamp(100-days*10,8,100),evolution=clamp(16+level*8+state.passed*2,8,100);$('hungerBar').style.width=hunger+'%';$('waterBar').style.width=water+'%';$('evolutionBar').style.width=evolution+'%';$('level').textContent='Lv. '+level;$('hudCommits').textContent=new Intl.NumberFormat('pt-BR').format(state.total);$('hudRepos').textContent=state.repos;$('hudActivity').textContent=last?days===0?'Hoje':days+'d':'—';$('hudActions').textContent=state.pending?'RUN':state.failed?'FAIL':state.passed?'PASS':'—';$('totalCommits').textContent=new Intl.NumberFormat('pt-BR').format(state.total);$('lastCommit').textContent=last?(days===0?'hoje':days===1?'há 1 dia':'há '+days+' dias'):'Ainda não';$('lastCommitDate').textContent=last?new Intl.DateTimeFormat('pt-BR',{dateStyle:'medium'}).format(new Date(last.date))+(last.repository?' · '+last.repository:''):'esperando atividade';$('hungerLabel').textContent=days>=7?'Faminto':days>=3?'Com fome':'Satisfeito';$('hungerDetail').textContent=days+' dia(s) desde o último commit';$('ciSummary').textContent=state.passed+' aprovadas · '+state.failed+' falhas · '+state.pending+' em andamento';$('ciLight').style.background=state.failed?'#ff4b64':state.pending?'#ffd16e':'#52ef91';$('testBar').style.width=(state.checked?state.passed/state.checked*100:0)+'%';$('testCount').textContent=state.checked?state.passed+'/'+state.checked+' workflows aprovados':'sem execuções classificadas';$('waterEvent').textContent=days===0?'+1 Água':'Água '+water+'%';$('waterDetail').textContent=days===0?'commit recente renova a jornada':'atividade recente mantém a fonte viva';$('qualityEvent').textContent=state.failed?'Build com falha':state.passed?'+1 Evolução':'Qualidade em construção';$('qualityDetail').textContent=state.failed?'marcas vermelhas no chão':state.passed+' workflows concluídos com sucesso';$('updateStatus').textContent='Dados coletados em '+new Intl.DateTimeFormat('pt-BR',{dateStyle:'medium',timeStyle:'short'}).format(new Date(d.generatedAt||Date.now()))+' · '+state.repos+' repositórios públicos analisados.';const sha=last?.sha||'',runAt=ci.latestRunAt||'',oldSha=store('cc-sha'),oldRun=store('cc-run'),initial=oldSha===null&&oldRun===null;if(!initial&&sha&&oldSha&&sha!==oldSha){state.celebrate=time+5;state.boost=performance.now()+5500;$('waterEvent').textContent='+1 Água';$('waterDetail').textContent='novo commit detectado · explorador celebra';wakeOneRecentBat();}if(!initial&&runAt&&oldRun&&runAt!==oldRun&&ci.latestConclusion==='success'){state.celebrate=time+5;state.boost=performance.now()+6000;$('qualityEvent').textContent='+1 Evolução';$('qualityDetail').textContent='execução verde detectada · caverna floresce';wakeOneRecentBat();}if(oldSha===null)store('cc-sha',sha);else if(sha)store('cc-sha',sha);if(oldRun===null)store('cc-run',runAt);else if(runAt)store('cc-run',runAt);if(state.failed>0&&Math.random()<.15){wakeOneRecentBat();}}
 async function refresh(){try{const r=await fetch('./data/commits.json?ts='+Date.now(),{cache:'no-store'});if(!r.ok)throw new Error('HTTP '+r.status);updateHUD(await r.json());}catch(e){$('updateStatus').textContent='Dados do GitHub indisponíveis; o fundo preto de segurança foi mantido.';$('ciSummary').textContent='Resultados de CI indisponíveis.';console.warn('[Commit Cave]',e.message);}}
-let frame=0;function loop(now){if(!frame)frame=now;const dt=Math.min(.04,Math.max(0,(now-frame)/1000));frame=now;time+=dt;render(dt);requestAnimationFrame(loop);}requestAnimationFrame(loop);refresh();setInterval(()=>{if(!document.hidden)refresh();},60000);document.addEventListener('visibilitychange',()=>{if(!document.hidden)frame=0;});
+let frame=0;function loop(now){if(!frame)frame=now;const dt=Math.min(.04,Math.max(0,(now-frame)/1000));frame=now;time+=dt;mistClock+=dt;render(dt);requestAnimationFrame(loop);}requestAnimationFrame(loop);refresh();setInterval(()=>{if(!document.hidden)refresh();},60000);document.addEventListener('visibilitychange',()=>{if(!document.hidden)frame=0;});
 })();
