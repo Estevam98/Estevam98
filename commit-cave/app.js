@@ -295,51 +295,55 @@ function drawHeroSprite(){
 
 let time=0,last=0,randomWake=65;
 const BAT_HOMES=[
- {x:62,y:14,size:.82},{x:151,y:10,size:1.05},{x:244,y:21,size:1.22},
- {x:340,y:13,size:.9},{x:429,y:18,size:1.12}
+ {x:62,y:14,size:.82},{x:151,y:18,size:1.05},{x:244,y:23,size:1.22},
+ {x:340,y:28,size:.9},{x:429,y:32,size:1.12}
 ];
 const bats=BAT_HOMES.map((p,i)=>({
  x:p.x,y:p.y,homeX:p.x,homeY:p.y,size:p.size,
  age:i%2?70:3,seed:i*1.7,mode:'rest',until:0,vx:0,vy:0,depth:i%3
 }));
-const fires=[{x:138,y:176,s:1.12}];
+const fires=[{x:140,y:176,s:1.12}];
 const fireY=176;
 const torches=[{x:19,y:177},{x:462,y:172},{x:424,y:94}];
+const altarCandles=[
+ {x:382,y:92,opacity:.78,next:0},
+ {x:412,y:92,opacity:.66,next:0}
+];
 const embers=Array.from({length:34},()=>({
- x:138+rnd(-8,8),y:176-rnd(0,22),vx:rnd(-7,7),vy:rnd(-24,-5),
+ x:140+rnd(-8,8),y:176-rnd(0,22),vx:rnd(-7,7),vy:rnd(-24,-5),
  life:rnd(.4,1.8),size:rnd(1,1.8)
 }));
-const foamBases=[{x:112,y:185,w:18}];
+const foamBases=[{x:44,y:185,w:18}];
 function spawnFoam(){
  const base=foamBases[0];
  return {base,x:base.x+rnd(-base.w/2,base.w/2),y:base.y-rnd(0,2),
   vx:rnd(-7,7),vy:rnd(-17,-5),life:rnd(.22,.72),size:rnd(1,1.8)};
 }
-const foam=Array.from({length:28},spawnFoam);
+const foam=Array.from({length:34},spawnFoam);
 
 const hero={
- x:125,y:181,shadowY:181,fromX:125,fromY:181,targetX:125,targetY:181,
+ x:125,y:178,shadowY:178,fromX:125,fromY:178,targetX:125,targetY:178,
  start:0,segmentStart:0,duration:1,arc:0,mode:'sleep',displayMode:null,
  eventMode:null,eventUntil:0,eventStart:0,segment:null,routeIndex:0,dir:1,phase:0
 };
 const adventureRoute=[
- {x:125,y:181,mode:'sleep',duration:3.5},
- {x:125,y:181,mode:'idle',duration:1.0},
- {x:245,y:181,mode:'walk',duration:3.7},
- {x:285,y:181,mode:'jump',duration:1.05,arc:39},
- {x:344,y:181,mode:'run',duration:1.65},
- {x:344,y:118,mode:'climb',duration:2.45},
- {x:382,y:118,mode:'walk',duration:1.25},
- {x:382,y:118,mode:'slash',duration:2.6},
- {x:382,y:118,mode:'celebrate',duration:1.7},
- {x:344,y:118,mode:'walk',duration:1.25},
- {x:344,y:181,mode:'climb',duration:2.45,reverse:true},
- {x:285,y:181,mode:'jump',duration:1.05,arc:38},
- {x:245,y:181,mode:'jump',duration:1.05,arc:38},
- {x:75,y:181,mode:'walk',duration:4.25},
- {x:75,y:181,mode:'drink',duration:2.3},
- {x:125,y:181,mode:'walk',duration:2.1},
- {x:125,y:181,mode:'sleep',duration:4.2}
+ {x:125,y:178,mode:'sleep',duration:3.5},
+ {x:125,y:178,mode:'idle',duration:1.0},
+ {x:238,y:178,mode:'walk',duration:3.5},
+ {x:284,y:178,mode:'jump',duration:1.08,arc:38},
+ {x:358,y:178,mode:'run',duration:1.7},
+ {x:358,y:114,mode:'climb',duration:2.35},
+ {x:396,y:114,mode:'walk',duration:1.35},
+ {x:396,y:114,mode:'slash',duration:2.8},
+ {x:396,y:114,mode:'celebrate',duration:1.7},
+ {x:358,y:114,mode:'walk',duration:1.35},
+ {x:358,y:178,mode:'climb',duration:2.35,reverse:true},
+ {x:284,y:178,mode:'jump',duration:1.08,arc:38},
+ {x:238,y:178,mode:'jump',duration:1.0,arc:34},
+ {x:75,y:178,mode:'walk',duration:4.0},
+ {x:75,y:178,mode:'drink',duration:2.3},
+ {x:125,y:178,mode:'walk',duration:2.1},
+ {x:125,y:178,mode:'sleep',duration:4.2}
 ];
 let hasInitialGitHubSnapshot=false;
 function queueHeroReaction(mode,duration){
@@ -347,13 +351,39 @@ function queueHeroReaction(mode,duration){
  hero.eventStart=time;
  hero.eventUntil=time+duration;
 }
-function wakeBat(b,t){b.mode='fly';b.until=t+rnd(6,10);const a=rnd(-2.7,.4),speed=rnd(24,52)*(b.depth===0?.7:b.depth===1?1:1.2);b.vx=Math.cos(a)*speed;b.vy=Math.sin(a)*speed;b.y=b.homeY+8;}
+function wakeBat(b,t){
+ b.mode='fly';
+ b.until=t+rnd(6,10);
+ const a=rnd(-2.7,.4);
+ const speed=rnd(24,52)*(b.depth===0?.7:b.depth===1?1:1.2);
+ b.vx=Math.cos(a)*speed;
+ b.vy=Math.sin(a)*speed;
+ b.y=b.homeY+6;
+}
+function spawnCommitBat(t){
+ // Keep the cave readable while allowing real commits to add new creatures.
+ if(bats.length>=18)return false;
+ const bat={
+  x:clamp(28+Math.random()*(W-56),28,W-28),
+  y:14+Math.random()*18,
+  homeX:clamp(28+Math.random()*(W-56),28,W-28),
+  homeY:14+Math.random()*18,
+  size:rnd(.72,1.16),age:0,seed:Math.random()*100,
+  mode:'rest',until:0,vx:0,vy:0,depth:bats.length%3
+ };
+ bat.x=bat.homeX;
+ bat.y=bat.homeY;
+ bats.push(bat);
+ wakeBat(bat,t);
+ return true;
+}
 function drawBat(c,b,t){
  const flap=Math.sin(t*12+b.seed);
  const wingLift=b.mode==='rest'?0:flap*5.5;
  c.save();
  c.translate(Math.round(b.x),Math.round(b.y));
  c.scale(b.size,b.size);
+ if(b.mode==='rest')c.rotate(Math.PI);
 
  // Wing outlines first, then dark membranes and subtle graphite ribs.
  if(b.mode==='rest'){
@@ -385,7 +415,32 @@ function drawBat(c,b,t){
  px(c,-1,3,2,3,'#0b0a13');
  c.restore();
 }
-function updateBats(dt){if(time>randomWake&&bats.filter(b=>b.mode==='fly').length<2){const idle=bats.filter(b=>b.mode==='rest');if(idle.length)wakeBat(idle[Math.floor(Math.random()*idle.length)],time);randomWake=time+rnd(55,95);}bats.forEach(b=>{if(b.mode==='rest'){b.x=b.homeX+Math.sin(time*1.8+b.seed)*.5;b.y=b.homeY+Math.sin(time*1.5+b.seed)*.5;return;}b.x=clamp(b.x+b.vx*dt,12,W-12);b.y=clamp(b.y+b.vy*dt+Math.sin(time*4+b.seed)*4*dt,24,145);if(b.x<=12||b.x>=W-12)b.vx*=-1;if(b.y<=12||b.y>=145)b.vy*=-1;if(time>b.until){b.mode='rest';b.homeX=clamp(b.x,25,W-25);b.homeY=10+(Math.floor(Math.abs(b.seed)*7)%15);}});}
+function updateBats(dt){
+ const flying=bats.filter(b=>b.mode==='fly').length;
+ if(time>randomWake&&flying<2){
+  const idle=bats.filter(b=>b.mode==='rest');
+  if(idle.length)wakeBat(idle[Math.floor(Math.random()*idle.length)],time);
+  randomWake=time+rnd(55,95);
+ }
+ bats.forEach(b=>{
+  if(b.mode==='rest'){
+   b.x=b.homeX+Math.sin(time*1.8+b.seed)*.35;
+   b.y=b.homeY+Math.sin(time*1.5+b.seed)*.25;
+   return;
+  }
+  b.x=clamp(b.x+b.vx*dt,12,W-12);
+  b.y=clamp(b.y+b.vy*dt+Math.sin(time*4+b.seed)*4*dt,24,145);
+  if(b.x<=12||b.x>=W-12)b.vx*=-1;
+  if(b.y<=24||b.y>=145)b.vy*=-1;
+  if(time>b.until){
+   b.mode='rest';
+   b.homeX=clamp(b.x,25,W-25);
+   b.homeY=14+Math.floor(Math.random()*19);
+   b.x=b.homeX;
+   b.y=b.homeY;
+  }
+ });
+}
 function updateHero(dt){
  if(!hero.segment){
   const segment=adventureRoute[hero.routeIndex];
@@ -394,12 +449,17 @@ function updateHero(dt){
   hero.fromY=hero.y;
   hero.targetX=segment.x;
   hero.targetY=segment.y;
+  if(segment.mode==='climb'){
+   hero.x=358;
+   hero.fromX=358;
+   hero.targetX=358;
+  }
   hero.segmentStart=time;
   hero.start=time;
   hero.duration=Math.max(.05,segment.duration);
   hero.arc=segment.arc||0;
   hero.mode=segment.mode;
-  if(Math.abs(segment.x-hero.x)>.5)hero.dir=segment.x>hero.x?1:-1;
+  if(segment.mode!=='climb'&&Math.abs(segment.x-hero.x)>.5)hero.dir=segment.x>hero.x?1:-1;
   hero.shadowY=hero.y;
  }
 
@@ -410,18 +470,18 @@ function updateHero(dt){
   const progress=clamp(elapsed/hero.duration,0,1);
   const eased=progress*progress*(3-2*progress);
   hero.shadowY=lerp(hero.fromY,hero.targetY,eased);
-  hero.x=lerp(hero.fromX,hero.targetX,eased);
+  hero.x=segment.mode==='climb'?358:lerp(hero.fromX,hero.targetX,eased);
   hero.y=hero.shadowY;
   if(segment.mode==='jump')hero.y-=Math.sin(progress*Math.PI)*hero.arc;
   if(progress>=1){
-   hero.x=hero.targetX;
+   hero.x=segment.mode==='climb'?358:hero.targetX;
    hero.y=hero.targetY;
    hero.shadowY=hero.targetY;
   }
  }
 
  if(elapsed>=hero.duration){
-  hero.x=segment.x;
+  hero.x=segment.mode==='climb'?358:segment.x;
   hero.y=segment.y;
   hero.shadowY=segment.y;
   hero.routeIndex=(hero.routeIndex+1)%adventureRoute.length;
@@ -498,36 +558,35 @@ function fire(c,f,i){
  c.restore();
 }
 function drawWater(c,dt){
- const base=foamBases[0];
-
- // Fine moving highlights follow the waterfall already painted into layer-far.png.
+ const streamColumns=[
+  {x:36,w:1,speed:23,offset:0,length:8,alpha:.14},
+  {x:39,w:2,speed:31,offset:17,length:12,alpha:.19},
+  {x:43,w:1,speed:27,offset:39,length:7,alpha:.12},
+  {x:47,w:2,speed:36,offset:8,length:11,alpha:.17},
+  {x:51,w:1,speed:25,offset:28,length:9,alpha:.13}
+ ];
  c.save();
  c.globalCompositeOperation='screen';
- for(let i=0;i<7;i++){
-  const streamX=105+i*2.1+Math.sin(time*1.8+i*1.3)*.75;
-  const streamY=137+((time*(19+i*2.2)+i*11)%47);
-  const alpha=.09+(i%3)*.035;
-  c.fillStyle='rgba(217,248,255,'+alpha+')';
-  c.fillRect(Math.round(streamX),Math.round(streamY),1,4+(i%3)*2);
-  if(i%2===0){
-   c.fillStyle='rgba(217,248,255,'+(alpha*.7)+')';
-   c.fillRect(Math.round(streamX+2),Math.round(streamY+8),1,3);
-  }
+ for(const stream of streamColumns){
+  const y=138+((time*stream.speed+stream.offset)%47);
+  c.globalAlpha=stream.alpha;
+  c.fillStyle='#b9f3ff';
+  c.fillRect(Math.round(stream.x+Math.sin(time*2.1+stream.offset)*.55),Math.round(y),stream.w,stream.length);
+  c.globalAlpha=stream.alpha*.55;
+  c.fillRect(Math.round(stream.x+stream.w+1),Math.round(y+8),1,Math.max(3,stream.length-3));
  }
-
- // Low-opacity foam particles bounce where the original waterfall meets the pool.
  foam.forEach(p=>{
   p.x+=p.vx*dt;
   p.y+=p.vy*dt;
-  p.vy+=49*dt;
+  p.vy+=54*dt;
   p.life-=dt;
-  if(p.y>=base.y-1){
-   p.y=base.y-1;
-   p.vy=-Math.abs(p.vy)*.42;
+  if(p.y>=p.base.y-1){
+   p.y=p.base.y-1;
+   p.vy=-Math.abs(p.vy)*.45;
    p.vx+=rnd(-2.5,2.5);
   }
-  if(p.life<=0||Math.abs(p.x-base.x)>base.w)Object.assign(p,spawnFoam());
-  c.globalAlpha=.16+clamp(p.life/.72,0,1)*.18;
+  if(p.life<=0||Math.abs(p.x-p.base.x)>p.base.w)Object.assign(p,spawnFoam());
+  c.globalAlpha=.10+clamp(p.life/.72,0,1)*.19;
   px(c,p.x,p.y,p.size,p.size,'#d9f8ff');
  });
  c.restore();
@@ -535,6 +594,29 @@ function drawWater(c,dt){
 }
 function drawTorches(c){
  torches.forEach((p,i)=>{const f=.5+.5*Math.sin(time*14+i*2.25),r=13+f*9,g=c.createRadialGradient(p.x,p.y,1,p.x,p.y,r);g.addColorStop(0,'rgba(255,137,53,.31)');g.addColorStop(1,'rgba(255,80,20,0)');c.fillStyle=g;c.fillRect(p.x-r,p.y-r,r*2,r*2);px(c,p.x-5,p.y+2,10,3,'#24202b');px(c,p.x-2,p.y+4,4,7,'#573a31');px(c,p.x-6,p.y+9,12,2,'#171522');const fy=p.y+Math.sin(time*16+i)*1.2;poly(c,[[p.x-4,fy+4],[p.x-3,fy-2],[p.x-1,fy-8-f*3],[p.x+1,fy-4],[p.x+4,fy-9],[p.x+5,fy+4]],'#9b3c25');poly(c,[[p.x-3,fy+3],[p.x-1,fy-3],[p.x+1,fy-7],[p.x+4,fy+3]],'#ff9d35');px(c,p.x,fy-3,2,4,'#fff0aa');});
+}
+function drawAltarCandles(c,dt){
+ altarCandles.forEach((candle,index)=>{
+  if(time>=candle.next){
+   candle.opacity=.42+Math.random()*.54;
+   candle.next=time+.035+Math.random()*.095;
+  }
+  const pulse=.82+.18*Math.sin(time*13+index*2.1);
+  const alpha=candle.opacity*pulse;
+  const glow=c.createRadialGradient(candle.x,candle.y,0,candle.x,candle.y,8);
+  glow.addColorStop(0,'rgba(255,170,74,'+(alpha*.22)+')');
+  glow.addColorStop(1,'rgba(255,112,45,0)');
+  c.save();
+  c.globalCompositeOperation='screen';
+  c.fillStyle=glow;
+  c.fillRect(candle.x-8,candle.y-8,16,16);
+  c.globalAlpha=alpha;
+  px(c,candle.x,candle.y-3,1,3,'#ff702d');
+  px(c,candle.x+1,candle.y-5,2,3,'#ffd078');
+  px(c,candle.x+1,candle.y-6,1,1,'#fff0b0');
+  c.restore();
+ });
+ c.globalAlpha=1;
 }
 function drawEmbers(c,dt){
  for(let i=0;i<embers.length;i++){
@@ -544,7 +626,7 @@ function drawEmbers(c,dt){
   p.life-=dt;
   if(p.life<=0||p.y<fireY-48){
    embers[i]={
-    x:138+rnd(-9,9),y:176,vx:rnd(-8,8),vy:rnd(-26,-7),
+    x:140+rnd(-9,9),y:176,vx:rnd(-8,8),vy:rnd(-26,-7),
     life:rnd(.5,1.9),size:rnd(1,2)
    };
    continue;
@@ -556,31 +638,49 @@ function drawEmbers(c,dt){
 }
 function drawAtmosphericMist(c){
  const bands=[
-  {y:48,w:94,h:3,speed:4.1,offset:12},
-  {y:62,w:126,h:4,speed:2.7,offset:168},
-  {y:82,w:108,h:3,speed:3.4,offset:276},
-  {y:190,w:142,h:4,speed:2.1,offset:48},
-  {y:207,w:118,h:3,speed:3.2,offset:226},
-  {y:222,w:156,h:4,speed:1.7,offset:348}
+  {y:48,w:174,h:4,speed:3.6,offset:18},
+  {y:82,w:212,h:5,speed:2.35,offset:161},
+  {y:204,w:188,h:4,speed:1.55,offset:337}
  ];
  c.save();
  c.globalCompositeOperation='screen';
- bands.forEach((band,index)=>{
+ for(const band of bands){
   const travel=(time*band.speed+band.offset)%(W+band.w);
   const x=travel-band.w;
-  c.fillStyle='rgba(140, 165, 205, 0.07)';
+  c.fillStyle='rgba(150, 170, 200, 0.05)';
   c.fillRect(Math.round(x),band.y,band.w,band.h);
-  c.fillRect(Math.round(x+band.w+W-band.w),band.y,band.w,band.h);
-  // Dithered edge pixels prevent the mist from reading as a solid UI-like bar.
-  c.fillStyle='rgba(140, 165, 205, 0.035)';
-  for(let j=0;j<8;j++){
-   const dx=x+(j*17+index*7)%band.w;
-   c.fillRect(Math.round(dx),band.y+(j%2?0:band.h),6+(j%3)*3,1);
+  c.fillRect(Math.round(x+W+band.w),band.y,band.w,band.h);
+  c.fillStyle='rgba(150, 170, 200, 0.025)';
+  for(let i=0;i<11;i++){
+   const dx=x+(i*19)%band.w;
+   c.fillRect(Math.round(dx),band.y+(i%2?0:band.h),7+(i%3)*4,1);
   }
- });
+ }
  c.restore();
 }
-function drawCrystalGlow(c){[[90,204,1],[397,187,.85],[314,126,.65]].forEach(([x,y,s])=>{const a=.5+.5*Math.sin(time*2+x);c.fillStyle='rgba(159,77,255,'+(.06+a*.12)+')';c.fillRect(x-9*s,y-12*s,18*s,25*s);crystal(c,x,y,s);});}
+function drawCrystalGlow(c){
+ const crystals=[
+  {x:88,y:198,color:'rgba(155,104,255,'},
+  {x:392,y:198,color:'rgba(92,196,255,'}
+ ];
+ c.save();
+ c.globalCompositeOperation='screen';
+ crystals.forEach((item,index)=>{
+  const pulse=.5+.5*Math.sin(time*2.25+index*1.4);
+  const radius=7+pulse*5;
+  const halo=c.createRadialGradient(item.x,item.y,0,item.x,item.y,radius);
+  halo.addColorStop(0,item.color+(0.12+pulse*.13)+')');
+  halo.addColorStop(.58,item.color+(0.045+pulse*.06)+')');
+  halo.addColorStop(1,item.color+'0)');
+  c.fillStyle=halo;
+  c.fillRect(item.x-radius,item.y-radius,radius*2,radius*2);
+  c.globalAlpha=.38+pulse*.42;
+  poly(c,[[item.x,item.y-5-pulse],[item.x+3,item.y],[item.x,item.y+5+pulse],[item.x-3,item.y]],index===0?'#bf94ff':'#8aeaff');
+  px(c,item.x,item.y-3,1,6,index===0?'#ead7ff':'#d8fbff');
+ });
+ c.restore();
+ c.globalAlpha=1;
+}
 function render(dt){
  ctx.imageSmoothingEnabled=false;
  ctx.fillStyle=C.void;
@@ -596,6 +696,7 @@ function render(dt){
  drawCrystalGlow(ctx);
  fires.forEach(fire.bind(null,ctx));
  drawTorches(ctx);
+ drawAltarCandles(ctx,dt);
  drawEmbers(ctx,dt);
 
  updateBats(dt);
@@ -624,11 +725,18 @@ function render(dt){
 function store(k,v){try{if(v===undefined)return localStorage.getItem(k);localStorage.setItem(k,v);}catch(e){}return null;}
 function updateHUD(d){const previous={total:state.total,passed:state.passed,failed:state.failed};const commits=Array.isArray(d.commits)?d.commits:[],last=d.lastCommit||commits.reduce((a,b)=>!a||new Date(b.date)>new Date(a.date)?b:a,null),days=last?.date?Math.max(0,Math.floor((Date.now()-new Date(last.date))/DAY)):7,ci=d.ci||{};Object.assign(state,{total:Number(d.totalCommits??commits.length),repos:Number(d.repositoriesScanned||0),passed:Number(ci.successfulRuns||0),failed:Number(ci.failedRuns||0),pending:Number(ci.pendingRuns||0),checked:Number(ci.checkedRuns||0),days});
 if(hasInitialGitHubSnapshot){
+ const newCommits=Math.max(0,state.total-previous.total);
+ for(let i=0;i<Math.min(3,newCommits);i++){
+  if(!spawnCommitBat(time)){
+   const resting=bats.filter(b=>b.mode==='rest');
+   if(resting.length)wakeBat(resting[i%resting.length],time);
+  }
+ }
  if(state.failed>previous.failed){
   queueHeroReaction('slash',2.6);
   const resting=bats.filter(b=>b.mode==='rest');
   if(resting.length)wakeBat(resting[Math.floor(Math.random()*resting.length)],time);
- }else if(state.total>previous.total||state.passed>previous.passed){
+ }else if(newCommits>0||state.passed>previous.passed){
   queueHeroReaction('celebrate',2.0);
   state.boost=performance.now()+4200;
  }
