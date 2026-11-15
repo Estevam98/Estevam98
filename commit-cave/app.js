@@ -297,7 +297,7 @@ let time=0,last=0,randomWake=65;
 const MAX_BATS=24;
 const bats=[];
 const batByCommit=new Map();
-const fires=[{x:140,y:174,s:1.12}];
+const fires=[{x:174,y:174,s:1.12}];
 const fireY=174;
 const torches=[{x:19,y:177},{x:462,y:172},{x:424,y:94}];
 const altarCandles=[
@@ -305,25 +305,24 @@ const altarCandles=[
  {x:412,y:92,opacity:.66,radius:9,next:0}
 ];
 const embers=Array.from({length:34},()=>({
- x:140+rnd(-1.4,1.4),y:174-rnd(0,16),vx:rnd(-.65,.65),vy:rnd(-25,-11),
+ x:174+rnd(-.7,.7),y:174-rnd(0,16),vx:rnd(-.45,.45),vy:rnd(-25,-11),
  life:rnd(.35,1.15),size:rnd(1,1.6)
 }));
-const foamBases=[{x:44,y:185,w:16}];
+const foamBases=[{x:28,y:195,w:12}];
 function spawnFoam(){
  const base=foamBases[0];
- return {
-  base,x:base.x+rnd(-base.w/2,base.w/2),y:base.y-rnd(0,2),
-  vx:rnd(-5.5,5.5),vy:rnd(-18,-6),life:rnd(.28,.85),size:rnd(1,1.8)
- };
+ return {base,x:base.x+rnd(-base.w/2,base.w/2),y:base.y-rnd(0,2),
+  vx:rnd(-4.5,4.5),vy:rnd(-18,-6),life:rnd(.28,.85),size:rnd(1,1.8)};
 }
 const foam=Array.from({length:38},spawnFoam);
 const waterfallStreams=[
- {x:36,w:1,speed:31,phase:2,length:8,alpha:.13},
- {x:39,w:2,speed:43,phase:19,length:12,alpha:.18},
- {x:42,w:1,speed:36,phase:33,length:7,alpha:.12},
- {x:45,w:2,speed:48,phase:11,length:10,alpha:.17},
- {x:49,w:1,speed:39,phase:27,length:9,alpha:.14},
- {x:51,w:1,speed:28,phase:41,length:7,alpha:.11}
+ {x:22,w:1,speed:33,phase:2,length:8,alpha:.13},
+ {x:24,w:2,speed:46,phase:19,length:12,alpha:.18},
+ {x:26,w:1,speed:38,phase:33,length:7,alpha:.12},
+ {x:28,w:2,speed:51,phase:11,length:10,alpha:.17},
+ {x:30,w:1,speed:42,phase:27,length:9,alpha:.14},
+ {x:32,w:1,speed:31,phase:41,length:7,alpha:.11},
+ {x:34,w:1,speed:36,phase:7,length:8,alpha:.12}
 ];
 const hero={
  x:125,y:178,shadowY:178,fromX:125,fromY:178,targetX:125,targetY:178,
@@ -358,9 +357,11 @@ function queueHeroReaction(mode,duration){
 function wakeBat(b,t){
  if(!b||b.permanentRoost)return false;
  b.mode='fly';
- b.until=b.ageClass==='young'?Infinity:t+rnd(7,12);
+ b.until=b.ageClass==='young'?Infinity:
+  t+(b.ageClass==='ancient'?rnd(4.5,8.5):rnd(7,12));
  const angle=rnd(0,Math.PI*2);
- const speed=(b.ageClass==='young'?rnd(28,54):rnd(18,34))*(b.depth===0?.72:b.depth===1?1:1.18);
+ const speed=(b.ageClass==='young'?rnd(28,54):b.ageClass==='ancient'?rnd(18,32):rnd(18,34))*
+  (b.depth===0?.72:b.depth===1?1:1.18);
  b.vx=Math.cos(angle)*speed;
  b.vy=Math.sin(angle)*speed;
  if(b.y<30)b.vy=Math.max(8,b.vy);
@@ -381,19 +382,34 @@ function classifyCommitAge(commit,now){
  return {ageMs,ageClass:'mature'};
 }
 
+// Stable pseudo-random selection: the same historical commit always keeps the same patrol role.
+function stableAncientPatroller(seed){
+ return hash(Math.floor(seed*1000),29,91)<0.25;
+}
+
+function nextAncientPatrolDelay(bat){
+ const cycle=bat.patrolCycle||0;
+ return 36+hash(Math.floor(bat.seed*1000),cycle,93)*44;
+}
+
 function createCommitBat(commit,id,index,now){
  const seed=id.split('').reduce((v,ch)=>((v*31)+ch.charCodeAt(0))>>>0,7);
  const age=classifyCommitAge(commit,now);
  const homeX=50+hash(seed,index,1)*380;
  const homeY=12+hash(seed,index,2)*16;
+ const batSeed=hash(seed,index,4)*100;
+ const ancientPatrol=age.ageClass==='ancient'&&stableAncientPatroller(batSeed);
  const bat={
   id,commitSha:commit.sha||'',repository:commit.repository||'',
   x:homeX,y:homeY,homeX,homeY,
   size:age.ageClass==='ancient'?.9+hash(seed,index,3)*.48:.68+hash(seed,index,3)*.44,
-  ageMs:age.ageMs,ageClass:age.ageClass,seed:hash(seed,index,4)*100,
+  ageMs:age.ageMs,ageClass:age.ageClass,seed:batSeed,
   mode:'rest',until:0,vx:0,vy:0,depth:index%3,
-  permanentRoost:age.ageClass==='ancient',
-  permanentFlight:age.ageClass==='young'
+  ancientPatrol,
+  permanentRoost:age.ageClass==='ancient'&&!ancientPatrol,
+  permanentFlight:age.ageClass==='young',
+  patrolCycle:0,
+  nextPatrolAt:time+8+hash(seed,index,6)*34
  };
  if(age.ageClass==='young')wakeBat(bat,time);
  return bat;
@@ -408,7 +424,8 @@ function selectVisibleCommitRecords(records){
  const slots=MAX_BATS-recent.length;
  if(archive.length&&slots>0){
   for(let i=0;i<Math.min(slots,archive.length);i++){
-   const index=slots===1?Math.floor((archive.length-1)/2):Math.round(i*(archive.length-1)/(Math.min(slots,archive.length)-1));
+   const index=slots===1?Math.floor((archive.length-1)/2):
+    Math.round(i*(archive.length-1)/(Math.min(slots,archive.length)-1));
    sampled.push(archive[index]);
   }
  }
@@ -432,9 +449,8 @@ function syncBatsFromCommits(commits,now=Date.now()){
    const ta=Date.parse(a.date||''),tb=Date.parse(b.date||'');
    return (Number.isFinite(tb)?tb:0)-(Number.isFinite(ta)?ta:0);
   });
-
  const activeIds=new Set();
- // Materialize a stable entity for every commit in the actual JSON history.
+
  records.forEach((commit,index)=>{
   const id=commitBatId(commit);
   activeIds.add(id);
@@ -454,36 +470,34 @@ function syncBatsFromCommits(commits,now=Date.now()){
   bat.repository=commit.repository||bat.repository;
 
   if(age.ageClass==='ancient'){
-   bat.permanentRoost=true;
-   bat.permanentFlight=false;
-   bat.mode='rest';
-   bat.vx=0;bat.vy=0;
    if(previousClass!=='ancient'){
+    bat.ancientPatrol=stableAncientPatroller(bat.seed);
+    bat.patrolCycle=0;
+    bat.nextPatrolAt=time+8+hash(Math.floor(bat.seed*1000),index,61)*34;
     bat.homeX=50+hash(bat.seed*1000,index,5)*380;
     bat.homeY=12+hash(bat.seed*1000,index,6)*16;
    }
-   bat.x=bat.homeX;bat.y=bat.homeY;
+   bat.permanentRoost=!bat.ancientPatrol;
+   bat.permanentFlight=false;
+   if(bat.permanentRoost){
+    bat.mode='rest';bat.vx=0;bat.vy=0;bat.x=bat.homeX;bat.y=bat.homeY;
+   }else if(bat.mode!=='fly'&&time>=bat.nextPatrolAt){
+    wakeBat(bat,time);
+   }
   }else if(age.ageClass==='young'){
-   bat.permanentRoost=false;
-   bat.permanentFlight=true;
+   bat.ancientPatrol=false;bat.permanentRoost=false;bat.permanentFlight=true;
    if(previousClass!=='young'||bat.mode!=='fly')wakeBat(bat,time);
   }else{
-   bat.permanentRoost=false;
-   bat.permanentFlight=false;
+   bat.ancientPatrol=false;bat.permanentRoost=false;bat.permanentFlight=false;
    if(previousClass!=='mature'){
-    bat.mode='rest';
-    bat.homeX=clamp(bat.x,50,430);
-    bat.homeY=12+hash(bat.seed,index,7)*16;
-    bat.x=bat.homeX;bat.y=bat.homeY;
+    bat.mode='rest';bat.homeX=clamp(bat.x,50,430);
+    bat.homeY=12+hash(bat.seed,index,7)*16;bat.x=bat.homeX;bat.y=bat.homeY;
+    bat.nextPatrolAt=time+8+hash(Math.floor(bat.seed*1000),index,71)*30;
    }
   }
  });
 
- // Prune commits removed from the source while keeping the complete surviving history.
- for(const id of batByCommit.keys()){
-  if(!activeIds.has(id))batByCommit.delete(id);
- }
-
+ for(const id of batByCommit.keys())if(!activeIds.has(id))batByCommit.delete(id);
  const visibleRecords=selectVisibleCommitRecords(records);
  const visible=visibleRecords.map(record=>batByCommit.get(commitBatId(record))).filter(Boolean);
  bats.splice(0,bats.length,...visible);
@@ -497,16 +511,16 @@ function wakeOneMatureBat(){
 }
 function drawBat(c,b,t){
  const flap=Math.sin(t*12+b.seed);
- const wingLift=b.mode==='rest'?0:flap*5.5;
+ const wingLift=b.mode==='rest'?Math.sin(t*2.15+b.seed)*.85:flap*5.5;
  c.save();
- c.translate(Math.round(b.x),Math.round(b.y));
+ c.translate(Math.round(b.x),Math.round(b.y+(b.mode==='rest'?Math.sin(t*1.9+b.seed)*.35:0)));
  c.scale(b.size,b.size);
  if(b.mode==='rest')c.rotate(Math.PI);
 
  // Wing outlines first, then dark membranes and subtle graphite ribs.
  if(b.mode==='rest'){
-  poly(c,[[-1,-1],[-5,-5],[-10,-7],[-13,-4],[-12,1],[-8,0],[-6,5],[-2,3],[0,7],[2,3],[6,5],[8,0],[12,1],[13,-4],[10,-7],[5,-5],[1,-1]],'#2b243d');
-  poly(c,[[-1,-1],[-5,-4],[-9,-5],[-11,-3],[-10,-1],[-7,-1],[-5,3],[-2,2],[0,5],[2,2],[5,3],[7,-1],[10,-1],[11,-3],[9,-5],[5,-4],[1,-1]],'#12101c');
+  poly(c,[[-1,-1],[-5,-5],[-10,-7-wingLift],[-13,-4-wingLift*.55],[-12,1],[-8,0],[-6,5],[-2,3],[0,7],[2,3],[6,5],[8,0],[12,1],[13,-4-wingLift*.55],[10,-7-wingLift],[5,-5],[1,-1]],'#2b243d');
+  poly(c,[[-1,-1],[-5,-4],[-9,-5-wingLift*.65],[-11,-3-wingLift*.45],[-10,-1],[-7,-1],[-5,3],[-2,2],[-5,3],[7,-1],[10,-1],[11,-3-wingLift*.45],[9,-5-wingLift*.65],[5,-4],[1,-1]],'#12101c');
   px(c,-2,-4,4,10,'#171321');
   px(c,-1,-6,2,3,'#2b243d');
  }else{
@@ -542,32 +556,36 @@ function updateBats(dt){
  }
 
  for(const bat of bats){
-  if(bat.ageClass==='ancient'||bat.permanentRoost){
+  const isAncient=bat.ageClass==='ancient';
+  if(isAncient&&bat.permanentRoost){
    bat.mode='rest';
    bat.x=bat.homeX+Math.sin(time*1.15+bat.seed)*.18;
    bat.y=bat.homeY+Math.sin(time*1.7+bat.seed)*.12;
    bat.vx=0;bat.vy=0;
    continue;
   }
-
   if(bat.mode==='rest'){
    bat.x=bat.homeX+Math.sin(time*1.3+bat.seed)*.35;
    bat.y=bat.homeY+Math.sin(time*1.8+bat.seed)*.22;
+   if(isAncient&&bat.ancientPatrol&&time>=bat.nextPatrolAt)wakeBat(bat,time);
    continue;
   }
-
   bat.x+=bat.vx*dt;
   bat.y+=bat.vy*dt+Math.sin(time*3.1+bat.seed)*7*dt;
   if(bat.x<18){bat.x=18;bat.vx=Math.abs(bat.vx);}
   if(bat.x>W-18){bat.x=W-18;bat.vx=-Math.abs(bat.vx);}
   if(bat.y<30){bat.y=30;bat.vy=Math.abs(bat.vy);}
   if(bat.y>150){bat.y=150;bat.vy=-Math.abs(bat.vy);}
-
-  if(bat.ageClass==='mature'&&time>bat.until){
-   bat.mode='rest';
-   bat.homeX=clamp(bat.x,50,430);
+  if(bat.ageClass!=='young'&&time>bat.until){
+   bat.mode='rest';bat.homeX=clamp(bat.x,50,430);
    bat.homeY=12+hash(bat.seed,Math.floor(time),8)*16;
    bat.x=bat.homeX;bat.y=bat.homeY;
+   if(isAncient&&bat.ancientPatrol){
+    bat.patrolCycle=(bat.patrolCycle||0)+1;
+    bat.nextPatrolAt=time+nextAncientPatrolDelay(bat);
+   }else if(bat.ageClass==='mature'){
+    bat.nextPatrolAt=time+8+hash(Math.floor(bat.seed*1000),Math.floor(time),71)*30;
+   }
   }
  }
 }
@@ -689,53 +707,37 @@ function fire(c,f,i){
 }
 function drawWater(c,dt){
  const base=foamBases[0];
- c.save();
- c.globalCompositeOperation='screen';
-
+ c.save();c.globalCompositeOperation='screen';
  for(const stream of waterfallStreams){
-  stream.phase=(stream.phase+stream.speed*dt)%47;
+  stream.phase=(stream.phase+stream.speed*dt)%57;
   for(let strand=0;strand<3;strand++){
-   const offset=(stream.phase+strand*15.6)%47;
-   const y=138+offset;
-   const x=stream.x+Math.sin(time*2.4+stream.phase*.08+strand)*.45;
-   const remaining=185-y;
+   const y=138+(stream.phase+strand*19)%57;
+   const x=stream.x+Math.sin(time*2.7+stream.phase*.09+strand)*.38;
+   const remaining=195-y;
    if(remaining<=0)continue;
    c.globalAlpha=stream.alpha*(strand===1?.78:1);
    c.fillStyle=strand===1?'#e5fbff':'#b9f3ff';
    c.fillRect(Math.round(x),Math.round(y),stream.w,Math.min(stream.length,remaining));
    if(strand===0){
-    c.globalAlpha=stream.alpha*.38;
+    c.globalAlpha=stream.alpha*.36;
     c.fillRect(Math.round(x+stream.w+1),Math.round(y+4),1,Math.min(4,Math.max(1,remaining-4)));
    }
   }
  }
-
  for(const particle of foam){
-  particle.x+=particle.vx*dt;
-  particle.y+=particle.vy*dt;
-  particle.vy+=64*dt;
-  particle.vx*=Math.max(0,1-1.6*dt);
-  particle.life-=dt;
-
+  particle.x+=particle.vx*dt;particle.y+=particle.vy*dt;
+  particle.vy+=64*dt;particle.vx*=Math.max(0,1-1.6*dt);particle.life-=dt;
   const left=base.x-base.w/2,right=base.x+base.w/2;
-  if(particle.x<left||particle.x>right){
-   particle.x=clamp(particle.x,left,right);
-   particle.vx*=-.55;
-  }
+  if(particle.x<left||particle.x>right){particle.x=clamp(particle.x,left,right);particle.vx*=-.55;}
   if(particle.y>=base.y-1&&particle.vy>0){
-   particle.y=base.y-1;
-   particle.vy=-Math.max(5,Math.abs(particle.vy)*.43);
-   particle.vx+=rnd(-1.8,1.8);
+   particle.y=base.y-1;particle.vy=-Math.max(5,Math.abs(particle.vy)*.43);
+   particle.vx+=rnd(-1.5,1.5);
   }
-  if(particle.life<=0){
-   Object.assign(particle,spawnFoam());
-   continue;
-  }
+  if(particle.life<=0){Object.assign(particle,spawnFoam());continue;}
   c.globalAlpha=.08+clamp(particle.life/.85,0,1)*.2;
-  px(c,particle.x,particle.y,particle.size,particle.size,particle.seed&&particle.seed%2?'#ffffff':'#d9f8ff');
+  px(c,particle.x,particle.y,particle.size,particle.size,Math.random()>.72?'#ffffff':'#d9f8ff');
  }
- c.restore();
- c.globalAlpha=1;
+ c.restore();c.globalAlpha=1;
 }
 function drawTorches(c){
  torches.forEach((p,i)=>{const f=.5+.5*Math.sin(time*14+i*2.25),r=13+f*9,g=c.createRadialGradient(p.x,p.y,1,p.x,p.y,r);g.addColorStop(0,'rgba(255,137,53,.31)');g.addColorStop(1,'rgba(255,80,20,0)');c.fillStyle=g;c.fillRect(p.x-r,p.y-r,r*2,r*2);px(c,p.x-5,p.y+2,10,3,'#24202b');px(c,p.x-2,p.y+4,4,7,'#573a31');px(c,p.x-6,p.y+9,12,2,'#171522');const fy=p.y+Math.sin(time*16+i)*1.2;poly(c,[[p.x-4,fy+4],[p.x-3,fy-2],[p.x-1,fy-8-f*3],[p.x+1,fy-4],[p.x+4,fy-9],[p.x+5,fy+4]],'#9b3c25');poly(c,[[p.x-3,fy+3],[p.x-1,fy-3],[p.x+1,fy-7],[p.x+4,fy+3]],'#ff9d35');px(c,p.x,fy-3,2,4,'#fff0aa');});
@@ -769,18 +771,12 @@ function drawAltarCandles(c,dt){
 function drawEmbers(c,dt){
  for(let i=0;i<embers.length;i++){
   const particle=embers[i];
-  particle.x+=particle.vx*dt;
-  particle.y+=particle.vy*dt;
-  particle.vx*=Math.max(0,1-2.8*dt);
-  particle.life-=dt;
-  particle.x=clamp(particle.x,136.5,143.5);
-
+  particle.x+=particle.vx*dt;particle.y+=particle.vy*dt;
+  particle.vx*=Math.max(0,1-2.8*dt);particle.life-=dt;
+  particle.x=clamp(particle.x,171.5,176.5);
   if(particle.life<=0||particle.y<fireY-42){
-   embers[i]={
-    x:140+rnd(-.8,.8),y:174,
-    vx:rnd(-.55,.55),vy:rnd(-27,-12),
-    life:rnd(.35,1.2),size:rnd(1,1.7)
-   };
+   embers[i]={x:174+rnd(-.5,.5),y:174,vx:rnd(-.4,.4),vy:rnd(-27,-12),
+    life:rnd(.35,1.2),size:rnd(1,1.7)};
    continue;
   }
   c.globalAlpha=clamp(particle.life/.8,0,1);
@@ -794,8 +790,7 @@ const mistBands=[
  {y:201,width:198,height:4,speed:3.1,offset:317,seed:3}
 ];
 let mistClock=0;
-function drawAtmosphericMist(c,dt){
- mistClock+=dt;
+function drawAtmosphericMist(c){
  c.save();
  c.globalCompositeOperation='screen';
  for(const band of mistBands){
@@ -844,7 +839,7 @@ function render(dt){
  // The uploaded far layer is the complete cave composition. Transparent mid/front
  // overlays are optional; an empty/missing overlay must never cover the final artwork.
  drawSceneLayer('far',far,0);
- drawAtmosphericMist(ctx,dt);
+ drawAtmosphericMist(ctx);
  drawSceneLayer('mid',mid,0);
  drawWater(ctx,dt);
  drawFrontLayer();
@@ -892,5 +887,5 @@ if(hasInitialGitHubSnapshot){
 }
 hasInitialGitHubSnapshot=true;const level=Math.max(1,Math.floor(state.total/25)+1+Math.floor(state.passed/5)),hunger=clamp(100-Math.max(0,days-1)*27,5,100),water=clamp(100-days*10,8,100),evolution=clamp(16+level*8+state.passed*2,8,100);$('hungerBar').style.width=hunger+'%';$('waterBar').style.width=water+'%';$('evolutionBar').style.width=evolution+'%';$('level').textContent='Lv. '+level;$('hudCommits').textContent=new Intl.NumberFormat('pt-BR').format(state.total);$('hudRepos').textContent=state.repos;$('hudActivity').textContent=last?days===0?'Hoje':days+'d':'—';$('hudActions').textContent=state.pending?'RUN':state.failed?'FAIL':state.passed?'PASS':'—';$('totalCommits').textContent=new Intl.NumberFormat('pt-BR').format(state.total);$('lastCommit').textContent=last?(days===0?'hoje':days===1?'há 1 dia':'há '+days+' dias'):'Ainda não';$('lastCommitDate').textContent=last?new Intl.DateTimeFormat('pt-BR',{dateStyle:'medium'}).format(new Date(last.date))+(last.repository?' · '+last.repository:''):'esperando atividade';$('hungerLabel').textContent=days>=7?'Faminto':days>=3?'Com fome':'Satisfeito';$('hungerDetail').textContent=days+' dia(s) desde o último commit';$('ciSummary').textContent=state.passed+' aprovadas · '+state.failed+' falhas · '+state.pending+' em andamento';$('ciLight').style.background=state.failed?'#ff4b64':state.pending?'#ffd16e':'#52ef91';$('testBar').style.width=(state.checked?state.passed/state.checked*100:0)+'%';$('testCount').textContent=state.checked?state.passed+'/'+state.checked+' workflows aprovados':'sem execuções classificadas';$('waterEvent').textContent=days===0?'+1 Água':'Água '+water+'%';$('waterDetail').textContent=days===0?'commit recente renova a jornada':'atividade recente mantém a fonte viva';$('qualityEvent').textContent=state.failed?'Build com falha':state.passed?'+1 Evolução':'Qualidade em construção';$('qualityDetail').textContent=state.failed?'marcas vermelhas no chão':state.passed+' workflows concluídos com sucesso';$('updateStatus').textContent='Dados coletados em '+new Intl.DateTimeFormat('pt-BR',{dateStyle:'medium',timeStyle:'short'}).format(new Date(d.generatedAt||Date.now()))+' · '+state.repos+' repositórios públicos analisados.';const sha=last?.sha||'',runAt=ci.latestRunAt||'',oldSha=store('cc-sha'),oldRun=store('cc-run'),initial=oldSha===null&&oldRun===null;if(!initial&&sha&&oldSha&&sha!==oldSha){state.celebrate=time+5;state.boost=performance.now()+5500;$('waterEvent').textContent='+1 Água';$('waterDetail').textContent='novo commit detectado · explorador celebra';wakeOneMatureBat();}if(!initial&&runAt&&oldRun&&runAt!==oldRun&&ci.latestConclusion==='success'){state.celebrate=time+5;state.boost=performance.now()+6000;$('qualityEvent').textContent='+1 Evolução';$('qualityDetail').textContent='execução verde detectada · caverna floresce';wakeOneMatureBat();}if(oldSha===null)store('cc-sha',sha);else if(sha)store('cc-sha',sha);if(oldRun===null)store('cc-run',runAt);else if(runAt)store('cc-run',runAt);if(state.failed>0&&Math.random()<.15){wakeOneMatureBat();}}
 async function refresh(){try{const r=await fetch('./data/commits.json?ts='+Date.now(),{cache:'no-store'});if(!r.ok)throw new Error('HTTP '+r.status);updateHUD(await r.json());}catch(e){$('updateStatus').textContent='Dados do GitHub indisponíveis; a caverna procedural continua ativa.';$('ciSummary').textContent='Resultados de CI indisponíveis.';console.warn('[Commit Cave]',e.message);}}
-let frame=0;function loop(now){if(!frame)frame=now;const dt=Math.min(.04,(now-frame)/1000);frame=now;time+=dt;render(dt);requestAnimationFrame(loop);}requestAnimationFrame(loop);refresh();setInterval(()=>{if(!document.hidden)refresh();},60000);document.addEventListener('visibilitychange',()=>{if(!document.hidden)frame=0;});
+let frame=0;function loop(now){if(!frame)frame=now;const dt=Math.min(.04,Math.max(0,(now-frame)/1000));frame=now;time+=dt;mistClock+=dt;render(dt);requestAnimationFrame(loop);}requestAnimationFrame(loop);refresh();setInterval(()=>{if(!document.hidden)refresh();},60000);document.addEventListener('visibilitychange',()=>{if(!document.hidden)frame=0;});
 })();
