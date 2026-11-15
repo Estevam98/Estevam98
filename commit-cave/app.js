@@ -299,33 +299,42 @@ const bats=[];
 const batByCommit=new Map();
 const fires=[{x:181,y:172,s:1.12}];
 const fireY=172;
+const torches=[{x:72,y:162},{x:408,y:162}];
 const altarCandles=[
  {x:382,y:92,opacity:.78,radius:8,next:0},
  {x:412,y:92,opacity:.66,radius:9,next:0}
 ];
 const embers=Array.from({length:34},()=>({
- x:181+rnd(-1.5,1.5),y:172,originY:172,vy:-rnd(8,12),
- size:rnd(1,1.5),tone:Math.random()
+ x:181+rnd(-1.5,1.5),
+ y:172,
+ vy:rnd(-22,-10),
+ tone:Math.random(),
+ size:rnd(1,1.45)
 }));
 
 const foamBases=[{x:22,y:195,w:16}];
 function spawnFoam(){
  const base=foamBases[0];
  return {
-  base,x:base.x+rnd(-base.w/2,base.w/2),y:base.y-rnd(0,1.5),
-  vx:rnd(-1.8,1.8),vy:rnd(-7,-2.5),life:rnd(.35,.9),size:rnd(1,1.4)
+  base,
+  x:base.x+rnd(-base.w/2,base.w/2),
+  y:base.y-rnd(0,1.2),
+  vx:rnd(-1.8,1.8),
+  vy:rnd(-8,-2.5),
+  life:rnd(.3,.9),
+  size:rnd(1,1.45)
  };
 }
-const foam=Array.from({length:30},spawnFoam);
+const foam=Array.from({length:32},spawnFoam);
 const waterfallStreams=[
- {x:14,w:1,speed:28,phase:2,length:8,alpha:.045},
- {x:16,w:1,speed:35,phase:19,length:9,alpha:.055},
- {x:18,w:1,speed:32,phase:33,length:7,alpha:.05},
- {x:20,w:1,speed:41,phase:11,length:9,alpha:.07},
- {x:22,w:1,speed:37,phase:27,length:8,alpha:.065},
- {x:24,w:1,speed:30,phase:41,length:7,alpha:.045},
- {x:26,w:1,speed:34,phase:7,length:9,alpha:.06},
- {x:28,w:2,speed:39,phase:23,length:8,alpha:.08}
+ {x:14,w:1,speed:56,phase:2,length:7,intensity:.72},
+ {x:16,w:1,speed:68,phase:19,length:9,intensity:.82},
+ {x:18,w:1,speed:61,phase:33,length:8,intensity:.68},
+ {x:20,w:2,speed:76,phase:11,length:10,intensity:.9},
+ {x:23,w:1,speed:64,phase:27,length:8,intensity:.74},
+ {x:25,w:1,speed:72,phase:41,length:9,intensity:.84},
+ {x:27,w:1,speed:59,phase:7,length:7,intensity:.66},
+ {x:29,w:1,speed:70,phase:23,length:8,intensity:.78}
 ];
 
 const hero={
@@ -695,73 +704,94 @@ function heroPixel(c, x, y, mode, dir) {
  c.restore();
 }
 function fire(c,f,i){
- const wave=Math.sin(time*7.5+i*1.7);
- const boost=performance.now()<state.boost?1.35:1;
- const x=f.x,y=f.y,r=(22+Math.abs(wave)*7)*f.s*boost;
- const halo=c.createRadialGradient(x,y,1,x,y,r);
- halo.addColorStop(0,'rgba(255,146,65,'+(.23*boost)+')');
- halo.addColorStop(.38,'rgba(255,104,43,.12)');
- halo.addColorStop(.72,'rgba(255,78,32,.045)');
+ const pulse=.5+.5*Math.sin(time*8);
+ const boost=performance.now()<state.boost?1.25:1;
+ const opacity=clamp((.10+.11*pulse)*boost,0,.28);
+ const radius=(17+5*pulse)*f.s;
+ const halo=c.createRadialGradient(f.x,f.y,0,f.x,f.y,radius);
+ halo.addColorStop(0,'rgba(255,174,88,'+opacity+')');
+ halo.addColorStop(.34,'rgba(255,126,54,'+(opacity*.62)+')');
+ halo.addColorStop(.72,'rgba(255,86,32,'+(opacity*.22)+')');
  halo.addColorStop(1,'rgba(255,60,20,0)');
  c.save();
  c.globalCompositeOperation='screen';
+ c.globalAlpha=1;
  c.fillStyle=halo;
- c.fillRect(x-r,y-r,r*2,r*2);
+ c.fillRect(f.x-radius,f.y-radius,radius*2,radius*2);
  c.restore();
 }
+
 function drawWater(c,dt){
  const base=foamBases[0];
+ const waterOpacity=.08+.07*(.5+.5*Math.sin(time*2.4));
  c.save();
  c.globalCompositeOperation='screen';
 
- // Fine vertical highlights remain entirely inside the original dark fissure [14,30).
  for(const stream of waterfallStreams){
-  stream.phase=(stream.phase+stream.speed*dt)%57;
-  const y=138+stream.phase;
-  const remaining=195-y;
-  if(remaining<=0)continue;
+  stream.phase=(stream.phase+stream.speed*dt)%47;
+  const firstY=138+stream.phase;
+  const secondY=138+((stream.phase+23.5)%47);
+  c.fillStyle='#c8f2ff';
 
-  c.globalAlpha=stream.alpha;
-  c.fillStyle='#c9f4ff';
-  c.fillRect(stream.x,Math.round(y),stream.w,Math.min(stream.length,remaining));
-
-  if(stream.w===1){
-   const glintY=138+((stream.phase+21)%57);
-   if(glintY<195){
-    c.globalAlpha=stream.alpha*.48;
-    c.fillRect(stream.x,Math.round(glintY),1,Math.min(3,195-glintY));
-   }
+  if(firstY<185){
+   c.globalAlpha=waterOpacity*stream.intensity;
+   c.fillRect(stream.x,Math.round(firstY),stream.w,Math.min(stream.length,185-firstY));
+  }
+  if(secondY<185){
+   c.globalAlpha=waterOpacity*stream.intensity*.58;
+   c.fillRect(stream.x,Math.round(secondY),1,Math.min(Math.max(3,stream.length-2),185-secondY));
   }
  }
 
- // Low-alpha foam obeys gravity, has a soft rebound and fades out at the pool edge.
  for(const particle of foam){
   particle.x+=particle.vx*dt;
   particle.y+=particle.vy*dt;
-  particle.vy+=38*dt;
-  particle.vx*=Math.max(0,1-2.6*dt);
+  particle.vy+=42*dt;
+  particle.vx*=Math.max(0,1-2.8*dt);
   particle.life-=dt;
 
   const left=14,right=30;
   if(particle.x<left||particle.x>right){
    particle.x=clamp(particle.x,left,right);
-   particle.vx*=-.25;
+   particle.vx*=-.28;
   }
   if(particle.y>=base.y-1&&particle.vy>0){
    particle.y=base.y-1;
-   particle.vy=-Math.max(1.8,Math.abs(particle.vy)*.24);
-   particle.vx+=rnd(-.45,.45);
+   particle.vy=-Math.max(1.8,Math.abs(particle.vy)*.26);
+   particle.vx+=rnd(-.4,.4);
   }
   if(particle.life<=0){
    Object.assign(particle,spawnFoam());
    continue;
   }
 
-  c.globalAlpha=.04+clamp(particle.life/.9,0,1)*.06;
+  c.globalAlpha=waterOpacity*(.52+.38*clamp(particle.life/.9,0,1));
   px(c,particle.x,particle.y,particle.size,particle.size,
    Math.random()>.55?'#ffffff':'#d9f8ff');
  }
  c.restore();
+ c.globalAlpha=1;
+}
+
+// Only the two bridge-end support torches are procedural.
+// The altar shelf is deliberately left to the original artwork and its altar candles.
+function drawTorches(c){
+ torches.forEach((torch,index)=>{
+  const pulse=.5+.5*Math.sin(time*8.5+index*1.7);
+  const radius=8+3*pulse;
+  const glow=c.createRadialGradient(torch.x,torch.y-3,0,torch.x,torch.y-3,radius);
+  glow.addColorStop(0,'rgba(255,174,91,'+(.18+.1*pulse)+')');
+  glow.addColorStop(.55,'rgba(255,112,48,'+(.08+.04*pulse)+')');
+  glow.addColorStop(1,'rgba(255,80,28,0)');
+  c.save();
+  c.globalCompositeOperation='screen';
+  c.fillStyle=glow;
+  c.fillRect(torch.x-radius,torch.y-3-radius,radius*2,radius*2);
+  c.globalAlpha=.55+.35*pulse;
+  px(c,torch.x-1,torch.y-5,2,4,'#ff702d');
+  px(c,torch.x,torch.y-7,1,3,'#ffd078');
+  c.restore();
+ });
  c.globalAlpha=1;
 }
 
@@ -795,17 +825,21 @@ function drawEmbers(c,dt){
  for(let i=0;i<embers.length;i++){
   const particle=embers[i];
   particle.y+=particle.vy*dt;
-  const rise=particle.originY-particle.y;
 
-  // Vertical-only sparks fade during the last 8px of a strict 20px rise.
-  if(rise>=20){
+  // Every ember rises vertically from y=172 and is discarded below y=154.
+  if(particle.y<154){
    embers[i]={
-    x:181+rnd(-1.5,1.5),y:172,originY:172,vy:-rnd(8,12),
-    size:rnd(1,1.5),tone:Math.random()
+    x:181+rnd(-1.5,1.5),
+    y:172,
+    vy:rnd(-22,-10),
+    tone:Math.random(),
+    size:rnd(1,1.45)
    };
    continue;
   }
-  c.globalAlpha=.16*clamp(1-rise/20,0,1);
+
+  const rise=172-particle.y;
+  c.globalAlpha=.21*clamp(1-rise/18,0,1);
   px(c,particle.x,particle.y,particle.size,particle.size,
    particle.tone>.55?'#ffb85a':'#ff6c38');
  }
@@ -824,7 +858,7 @@ function drawAtmosphericMist(c){
  for(const band of mistBands){
   const travel=(mistClock*band.speed+band.offset)%(W+band.width);
   const x=travel-band.width;
-  c.fillStyle='rgba(150, 170, 200, 0.05)';
+  c.fillStyle='rgba(150, 170, 200, 0.04)';
   c.fillRect(Math.round(x),band.y,band.width,band.height);
   c.fillStyle='rgba(150, 170, 200, 0.026)';
   c.fillRect(Math.round(x+23),band.y-2,Math.round(band.width*.34),2);
@@ -873,6 +907,7 @@ function render(dt){
  drawFrontLayer();
  drawCrystalGlow(ctx);
  fires.forEach(fire.bind(null,ctx));
+ drawTorches(ctx);
  drawAltarCandles(ctx,dt);
  drawEmbers(ctx,dt);
 
