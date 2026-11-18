@@ -252,20 +252,14 @@ let time=0,last=0,randomWake=65;
 const MAX_BATS=24;
 const bats=[];
 const batByCommit=new Map();
-const fires=[{x:181,y:172,s:1.12}];
+const fires=[{x:174,y:174,s:1.12}];
 const fireY=172;
 const torches=[{x:72,y:162}];
 const altarCandles=[
  {x:382,y:92,opacity:.78,radius:8,next:0},
  {x:412,y:92,opacity:.66,radius:9,next:0}
 ];
-const embers=Array.from({length:34},()=>({
- x:181+rnd(-1.5,1.5),
- y:172,
- vy:rnd(-22,-10),
- tone:Math.random(),
- size:rnd(1,1.45)
-}));
+const embers=Array.from({length:6},()=>({x:174,y:174,vy:rnd(-5.5,-3.2),size:1,alpha:.15}));
 
 const foamBases=[{x:22,y:195,w:16}];
 
@@ -655,24 +649,19 @@ function heroPixel(c, x, y, mode, dir) {
  c.restore();
 }
 function fire(c,f,i){
- const x=181;
- const y=172;
- const pulse=.5+.5*Math.sin(time*8);
- const boost=performance.now()<state.boost?1.2:1;
- const opacity=clamp((.08+.12*pulse)*boost,0,.24);
- const radius=(16+4*pulse)*(f.s||1);
+ // Ambient bounce light only; the authored fire remains untouched.
+ const x=174,y=174;
+ const pulse=.5+.5*Math.sin(time*6.2+i*.7);
+ const boost=performance.now()<state.boost?1.12:1;
+ const opacity=clamp((.035+.035*pulse)*boost,0,.08);
+ const radius=(13+3*pulse)*(f.s||1);
  const halo=c.createRadialGradient(x,y,0,x,y,radius);
- halo.addColorStop(0,'rgba(255,174,88,'+opacity+')');
- halo.addColorStop(.38,'rgba(255,126,54,'+(opacity*.58)+')');
- halo.addColorStop(.78,'rgba(255,86,32,'+(opacity*.18)+')');
- halo.addColorStop(1,'rgba(255,60,20,0)');
-
- c.save();
- c.globalCompositeOperation='screen';
- c.globalAlpha=1;
- c.fillStyle=halo;
- c.fillRect(x-radius,y-radius,radius*2,radius*2);
- c.restore();
+ halo.addColorStop(0,'rgba(255,183,112,'+opacity+')');
+ halo.addColorStop(.42,'rgba(255,139,82,'+(opacity*.42)+')');
+ halo.addColorStop(.78,'rgba(255,111,65,'+(opacity*.12)+')');
+ halo.addColorStop(1,'rgba(255,96,48,0)');
+ c.save();c.globalCompositeOperation='screen';c.globalAlpha=1;
+ c.fillStyle=halo;c.fillRect(x-radius,y-radius,radius*2,radius*2);c.restore();
 }
 
 function drawWater(c,dt){
@@ -706,7 +695,7 @@ function drawWater(c,dt){
    continue;
   }
 
-  c.globalAlpha=.05;
+  c.globalAlpha=rnd(.04,.08);
   px(c,particle.x,particle.y,particle.size,particle.size,
    particle.tone>.5?'#ffffff':'#d9f8ff');
  }
@@ -722,14 +711,8 @@ function drawTorches(c){
   glow.addColorStop(0,'rgba(255,174,91,'+(.18+.1*pulse)+')');
   glow.addColorStop(.55,'rgba(255,112,48,'+(.08+.04*pulse)+')');
   glow.addColorStop(1,'rgba(255,80,28,0)');
-  c.save();
-  c.globalCompositeOperation='screen';
-  c.fillStyle=glow;
-  c.fillRect(torch.x-radius,torch.y-3-radius,radius*2,radius*2);
-  c.globalAlpha=.55+.35*pulse;
-  px(c,torch.x-1,torch.y-5,2,4,'#ff702d');
-  px(c,torch.x,torch.y-7,1,3,'#ffd078');
-  c.restore();
+  c.save();c.globalCompositeOperation='screen';c.fillStyle=glow;
+  c.fillRect(torch.x-radius,torch.y-3-radius,radius*2,radius*2);c.restore();
  });
  c.globalAlpha=1;
 }
@@ -748,39 +731,26 @@ function drawAltarCandles(c,dt){
   glow.addColorStop(0,'rgba(255,190,92,'+(alpha*.31)+')');
   glow.addColorStop(.42,'rgba(255,130,53,'+(alpha*.18)+')');
   glow.addColorStop(1,'rgba(255,112,45,0)');
-  c.save();
-  c.globalCompositeOperation='screen';
-  c.fillStyle=glow;
+  c.save();c.globalCompositeOperation='screen';c.fillStyle=glow;
   c.fillRect(candle.x-radius,candle.y-radius,radius*2,radius*2);
-  c.globalAlpha=alpha;
-  px(c,candle.x,candle.y-3,1,3,'#ff702d');
-  px(c,candle.x+1,candle.y-5,2,3,'#ffd078');
-  px(c,candle.x+1,candle.y-6,1,1,'#fff0b0');
+  // Native candle artwork stays unobstructed; glow only.
   c.restore();
  });
  c.globalAlpha=1;
 }
+
 function drawEmbers(c,dt){
  for(let i=0;i<embers.length;i++){
   const particle=embers[i];
   particle.y+=particle.vy*dt;
-
-  // Every ember rises vertically from y=172 and is discarded below y=154.
-  if(particle.y<154){
-   embers[i]={
-    x:181+rnd(-1.5,1.5),
-    y:172,
-    vy:rnd(-22,-10),
-    tone:Math.random(),
-    size:rnd(1,1.45)
-   };
+  // Rare charcoal dust rises vertically and disappears after 14 pixels.
+  if(particle.y<160){
+   embers[i]={x:174,y:174,vy:rnd(-5.5,-3.2),size:1,alpha:.15};
    continue;
   }
-
-  const rise=172-particle.y;
-  c.globalAlpha=.21*clamp(1-rise/18,0,1);
-  px(c,particle.x,particle.y,particle.size,particle.size,
-   particle.tone>.55?'#ffb85a':'#ff6c38');
+  const rise=174-particle.y;
+  c.globalAlpha=particle.alpha*clamp(1-rise/14,0,1);
+  px(c,particle.x,particle.y,particle.size,particle.size,'#2d2830');
  }
  c.globalAlpha=1;
 }
@@ -801,10 +771,10 @@ function drawAtmosphericMist(c,dt){
   const travel=(mistClock*band.speed+band.offset)%cycle;
   const x=travel-band.width;
 
-  c.fillStyle='rgba(150, 170, 200, 0.04)';
+  c.fillStyle='rgba(150, 170, 200, 0.03)';
   c.fillRect(Math.round(x),band.y,band.width,band.height);
 
-  c.fillStyle='rgba(150, 170, 200, 0.026)';
+  c.fillStyle='rgba(150, 170, 200, 0.018)';
   c.fillRect(Math.round(x+18),band.y-2,Math.round(band.width*.28),2);
   c.fillRect(Math.round(x+band.width*.58),band.y+band.height,Math.round(band.width*.2),1);
   for(let i=0;i<12;i++){
